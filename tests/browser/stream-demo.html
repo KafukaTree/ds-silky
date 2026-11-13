@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DS Silky · Streaming</title>
+<style>
+:root{color-scheme:light;--dsw-font-family:"PingFang SC", "Microsoft YaHei", sans-serif}
+*{box-sizing:border-box}body{margin:0;background:#fff;color:#334155;font:16px/1.9 var(--dsw-font-family)}
+.stage{width:900px;height:560px;padding:35px 45px;background:#fff}header{display:flex;align-items:center;gap:12px}header img{width:34px;height:34px}header strong{font-size:21px;font-weight:500;letter-spacing:-.5px}header span{margin-left:auto;color:#718096;font-size:13px}
+.paper{margin-top:25px;padding:28px 34px 25px;border:1px solid #cbd5e1;border-radius:12px;height:389px}.prompt{font-size:14px;color:#778396;margin-bottom:23px}.reply{font-size:18px;line-height:1.9;letter-spacing:.1px}.reply p{margin:0 0 17px}.reply code{font:15px/1.8 ui-monospace,monospace;border:1px solid #cbd5e1;border-radius:4px;padding:1px 4px;color:inherit}footer{margin-top:17px;display:flex;justify-content:space-between;font-size:12px;color:#8190a3}
+@media(max-width:899px){.stage{width:100%;height:auto;min-height:560px;padding:25px}.paper{height:auto;min-height:389px;padding:24px}.reply{font-size:16px}header span{font-size:11px}}
+</style>
+<div class="stage"><header><img src="../../assets/logo.svg" alt=""><strong>DS Silky</strong><span>让文字顺着思路出现</span></header><div class="paper"><div class="prompt">说说看，什么样的流式输出读起来舒服？</div><main data-conversation-region="chat"><section data-chat-flow-key="demo" data-chat-flow-kind="assistant-step"><div class="reply" data-streaming="true" id="response"></div></section></main></div><footer><span>实际插件渲染 · 模拟不规则数据到达</span><span>DeepSeek Harness UI plugin</span></footer></div>
+<script>
+window.__ModuleLoader__={load(module){module.factory(()=>{throw Error('Demo has no host bridge')}).apply({effect(callback){callback()}})}};
+// The demo appends host-like DOM. All reveal timing and opacity come from lib/client.js.
+window.playDemo=async()=>{
+  if(window.demoStarted)return;window.demoStarted=true;
+  const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const chunks=[
+    ['文字应该',180],['自然地',110],['向前流动，',350],['让眼睛',120],['跟得上思路。',270],
+    ['不必',90],['每次都',180],['等一整段',420],['突然出现，',130],['也不用',180],['刻意放慢。',240],
+    [null,360],['当数据',100],['时快时慢，',440],['呈现的节奏',150],['仍然尽量',100],['保持连贯。',220],
+    ['一句话里的 ',160],[{code:'inline code'},230],['，',100],['也和正文',160],['一起到达。',300],
+    [null,250],['上一段',150],['收好尾，',300],['下一段',160],['再接上。',170],['少一点跳动，',300],['多一点',150],['从容。',130]
+  ];
+  let p=document.createElement('p');response.append(p);
+  await wait(650);
+  for(const [text,gap] of chunks){await wait(gap);if(text===null){p=document.createElement('p');response.append(p)}else if(typeof text==='object'){const code=document.createElement('code');code.textContent=text.code;p.append(code)}else{p.append(document.createTextNode(text))}}
+  await wait(450);response.removeAttribute('data-streaming');
+  await wait(1800);window.demoDone=true;
+};
+if(new URLSearchParams(location.search).has('play'))addEventListener('load',()=>playDemo());
+</script><script src="../../lib/client.js"></script></html>

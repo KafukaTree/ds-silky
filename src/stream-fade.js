@@ -601,11 +601,11 @@ function sfDrive(state, now) {
   // when the next line starts; the rate controller makes the time up on
   // the following line.
   const settling = !state.running
-  let first = state.spans.length
-  while (first > 0 && state.spans[first - 1].born === Infinity) first -= 1
-  for (let index = first; index < state.spans.length; index += 1) {
-    const span = state.spans[index]
+  for (const span of state.spans) {
     if (span.start >= state.cursor) break
+    // A tail rewrite can queue new text before a retained, already fading
+    // suffix. Pending spans are ordered by offset, but need not be a tail.
+    if (span.born !== Infinity) continue
     // The check sits on the boundary span itself, so a cursor jump that
     // crosses a whole line in one tick still cannot reveal the next line
     // before the previous one has finished fading.
@@ -662,7 +662,12 @@ function sfUpdate(state, source, snapshot, animate) {
     const append = prefix === oldText.length
     const tailRewrite = prefix > 0 && oldText.length - prefix <= 32 && newText.length > oldText.length
     const summaryChange = state.kind === 'summary' && newText.length <= SF_MAX_FIRST
-    if (append || tailRewrite || summaryChange) sfAppend(state, prefix, newText.length - suffix)
+    if (append || tailRewrite || summaryChange) {
+      sfAppend(state, prefix, newText.length - suffix)
+      // sfAppend queues the changed middle after retained suffix spans.
+      // Restore reading order before the frontier walks or stops at a line.
+      if (!append) state.spans.sort((a, b) => a.start - b.start)
+    }
   }
   if (state.spans.length > 0) sfActive.add(state)
 }

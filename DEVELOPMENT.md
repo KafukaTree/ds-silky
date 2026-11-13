@@ -75,6 +75,18 @@ npm run test:browser -- http://127.0.0.1:9222
 
 独立 fixture 模拟宿主 DOM 和加载器，不能替代真实 React 应用。尤其真实 Shiki bridge、真实菜单提交与长期会话性能不在这些结果的完整覆盖范围内。本轮没有重新测 INP、长任务或长会话堆内存。
 
+## 录制流式演示
+
+`tests/browser/stream-demo.html` 使用模拟宿主 DOM 和不规则批次输入，加载实际 `lib/client.js`。演示代码只追加文字；显示节奏与淡入由插件负责。它不是 Claude Desktop 或 DSH 整应用的性能对比。
+
+安装 Google Chrome 和 ffmpeg 后，先构建，再录制：
+
+```bash
+node scripts/record-stream-demo.mjs
+```
+
+录制器使用独立临时浏览器配置，按截图的实际时间间隔生成 20 fps GIF，不加速播放。输出 `assets/streaming-demo.gif` 和 `assets/streaming-still.png`；结束时清理临时帧与浏览器。`CHROME_PATH` 可覆盖 Chrome 路径。页面加 `?play` 可直接播放一次演示。
+
 ## 品牌与包身份
 
 展示名称由 `locale/en.json` 和 `locale/zh.json` 的 `meta.title` 提供。图标通过 `package.json` 的 `icon` 与 `./icon` 导出提供。客户端注册 ID 从 `package.json.name` 生成，必须与宿主解析的包名一致。
