@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">DS Silky</title>
+  <desc id="desc">A continuous white silk ribbon forms an S on an ink-blue square, ending in a periwinkle tip.</desc>
+  <rect width="128" height="128" rx="30" fill="#14243B"/>
+  <path d="M91 37C80 27 58 26 44 33C30 40 30 53 43 59C53 64 73 64 84 69C99 76 96 91 82 97C67 104 46 100 35 91" stroke="#F5F8FF" stroke-width="12" stroke-linecap="round"/>
+  <path d="M82 97C67 104 46 100 35 91" stroke="#A8B9FF" stroke-width="12" stroke-linecap="round"/>
+</svg>

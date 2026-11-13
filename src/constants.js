@@ -1,0 +1,5 @@
+const STYLE_ID = 'dsh-anthropic-fonts'
+const PLUGIN_VERSION = '@version'
+const LEGACY_DATALIST_ID = 'dsh-font-families'
+const LISTBOX_ID = 'dsh-font-family-listbox'
+const PANEL_ID = 'dsh-font-family-panel'

@@ -1,0 +1,109 @@
+/* Pending questions: a quiet choice panel. Scope to the composer so
+   transcript replies and plan-review cards keep their own hierarchy. */
+[data-question-key] > section {
+  font-family: var(--dsw-font-family, -apple-system, BlinkMacSystemFont, sans-serif) !important;
+  border: 1px solid var(--dsw-alias-border-l2) !important;
+  border-radius: 16px !important;
+  background: var(--dsw-specific-input-major, var(--dsw-alias-bg-base)) !important;
+  box-shadow: 0 4px 20px -12px rgba(0, 0, 0, .16) !important;
+  padding: 0 0 12px !important;
+}
+[data-question-key] header {
+  padding: 16px 18px 0 22px !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+[data-question-key] @host(fragment.eyebrow.contains) {
+  margin: 0 !important;
+  font: 400 12px/20px var(--dsw-font-family, sans-serif) !important;
+  color: var(--dsw-alias-label-secondary) !important;
+}
+[data-question-key] @host(fragment.questionTitle.contains) { margin: 10px 22px 0 !important; }
+[data-question-key] h2 {
+  font: 500 14px/22px var(--dsw-font-family, sans-serif) !important;
+  letter-spacing: 0 !important;
+}
+[data-question-key] @host(fragment.options.contains) {
+  margin: 12px 0 0 !important;
+  padding: 0 12px !important;
+  gap: 4px !important;
+}
+[data-question-key] [data-option-row] {
+  border-radius: 10px !important;
+  border-width: 1px !important;
+}
+[data-question-key] button:is([role="radio"], [role="checkbox"]) {
+  padding: 10px 12px !important;
+  gap: 12px !important;
+  border-radius: 9px;
+  font-family: inherit !important;
+}
+[data-question-key] @host(fragment.optionCopy.contains) {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 3px !important;
+}
+[data-question-key] @host(fragment.optionLabel.contains) {
+  font: 500 14px/22px var(--dsw-font-family, sans-serif) !important;
+}
+[data-question-key] [data-option-description] {
+  width: 100% !important;
+  font: 400 13px/21px var(--dsw-font-family, sans-serif) !important;
+  color: var(--dsw-alias-label-secondary) !important;
+}
+[data-question-key] @host(fragment.number.contains) {
+  background: transparent !important;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px !important;
+  font: 400 12px/18px var(--dsw-font-family, sans-serif) !important;
+  margin-top: 1px !important;
+}
+[data-question-key] [aria-checked="true"] @host(fragment.number.contains) {
+  background: var(--dsw-alias-label-primary) !important;
+  border-color: var(--dsw-alias-label-primary) !important;
+  color: var(--dsw-alias-label-primary-foreground) !important;
+}
+[data-question-key] @host(fragment.badge.contains) {
+  padding: 0 !important;
+  background: transparent !important;
+  color: var(--dsw-alias-label-secondary) !important;
+  font: 400 12px/18px var(--dsw-font-family, sans-serif) !important;
+}
+[data-question-key] @host(fragment.customRow.contains) {
+  margin-top: 5px;
+  padding: 10px 12px !important;
+  gap: 12px !important;
+}
+/* Keep the textarea and its sizing mirror identical. */
+[data-question-key] @host(fragment.field.contains) > * {
+  font: 400 13px/21px var(--dsw-font-family, sans-serif) !important;
+}
+[data-question-key] footer {
+  margin-top: 12px !important;
+  padding: 10px 16px 0 !important;
+  border-top: 1px solid var(--dsw-alias-border-l2);
+  gap: 8px !important;
+  flex-wrap: wrap;
+}
+[data-question-key] @host(fragment.footerActions.contains) { gap: 8px !important; margin-left: auto; }
+[data-question-key] @host(fragment.footerActions.contains) button {
+  min-height: 32px !important;
+  padding: 5px 14px !important;
+  border-radius: 8px !important;
+  font: 500 13px/20px var(--dsw-font-family, sans-serif) !important;
+}
+[data-question-key] @host(fragment.progress.contains) { font: 400 12px/24px var(--dsw-font-family, sans-serif) !important; }
+[data-question-key] button:focus-visible {
+  outline: 2px solid var(--dsw-focus-ring-color, var(--dsw-alias-label-primary)) !important;
+  outline-offset: -2px;
+}
+/* Expanded descriptions reserve the native collapse control's own row. */
+[data-question-key] [data-option-row][data-expanded] > button:first-child { padding-bottom: 32px !important; }
+@media (max-width: 540px) {
+  [data-question-key] header { padding: 12px 12px 0 16px !important; }
+  [data-question-key] @host(fragment.questionTitle.contains) { margin: 8px 16px 0 !important; }
+  [data-question-key] @host(fragment.options.contains) { padding: 0 8px !important; }
+  [data-question-key] button:is([role="radio"], [role="checkbox"]) { padding: 9px 8px !important; gap: 9px !important; }
+  [data-question-key] footer { padding: 10px 12px 0 !important; }
+}
+

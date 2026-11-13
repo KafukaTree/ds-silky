@@ -1,0 +1,201 @@
+/* ------------------------------------------------------------------
+   Part 8 — settings dialog. The dialog runs its own radius ladder
+   (28 panel / 20 card / 12 control) and that reads correctly as a
+   nested set, so it is left alone. What it did not have was one type
+   scale: the 显示代码工作视图 toggle row (xdKASq) still wore the app
+   chrome scale — 13/460 title with a 12/395/17 body — while every
+   other row in the same list sits at 14/400 with a 12/400/18 body,
+   including the newer toggle row (RX-52G) two sections down. Same
+   component family, two type scales, so xdKASq is brought onto
+   RX-52G's values rather than restyled to something new.
+------------------------------------------------------------------ */
+
+@host(settingsRow.title.exact) {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  line-height: 20px !important;
+}
+@host(settingsRow.description.exact) {
+  font-weight: 400 !important;
+  line-height: 18px !important;
+}
+
+/* Hint lines that end on one character — 繁忙时的发送行为 wraps to a
+   lone 为. Chromium rebalances the last lines instead. Matches _desc,
+   _description and cardDescription alike. */
+@host(floatingPanel.panel.exact) @host(fragment.descUnscoped.contains),
+@host(floatingPanel.panel.exact) @host(fragment.Description.contains) {
+  text-wrap: pretty !important;
+}
+
+/* The font-size row ships a native stepper: two small buttons stacked
+   inside the number pill, each holding a chevron. An earlier round
+   mistook them for decoration and hid them, which removed the only way
+   to change the size — the chevron beside the pill opens 更多字体设置,
+   not the picker. They stay; only their glyph gets a usable size. */
+@host(scopePicker.arrow.exact) svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+/* Document-layer motion: the plugin-card chevrons turn at 0.14s and the
+   preset cards fade at 0.16s, while everything else in the app expands
+   at 0.15-0.18s. Same family, so both come onto the 0.15s rung. */
+@host(searchControl.chevron.exact),
+@host(approval.card.exact) {
+  transition-duration: .15s !important;
+}
+
+/* 510 is not a rung the system has anywhere else; the document layer's
+   medium is 500, which the rest of this panel already uses. */
+@host(trajectory.amount.exact) {
+  font-weight: 500 !important;
+}
+
+/* ------------------------------------------------------------------
+   Part 9 — plugins page. A full page, not a dialog: its type runs one
+   step larger than the settings layer (13/18 body against 12/18), so
+   only the values that are off every ladder get touched here.
+------------------------------------------------------------------ */
+
+/* 更多 resolved to a third grey, rgb(110,114,120) — between secondary
+   and tertiary, matching neither. It is a navigation affordance, so it
+   takes the secondary ink the rail's rows use. */
+@host(settingsPage.groupMore.exact) {
+  color: var(--dsw-alias-label-secondary) !important;
+}
+
+/* The info mark beside the page subtitle shipped at 11px: one below the
+   compact icon rung, and a hair under the 12px label it annotates. */
+@host(settingsPage.pageIntro.exact) svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+/* Toolbar icons stay at 13, matched to their 13px label. Tried 14 (the
+   app pairs an icon one step above its text in the rail) and it reads
+   heavy: a 14px plus-sign fills more of its box than a 14px glyph of
+   CJK does. The host was right; 13 is the rung for a 13px label. */
+
+/* The shortcuts dialog closes with a 28px circle while the settings
+   dialog it opens from closes with a 28px rounded square, and every
+   other 28px icon button in the app (sidebar toggle, search, view
+   options) sits at radius 8. Two close buttons one layer apart should
+   not be two shapes. */
+@host(shortcutDialog.close.exact) {
+  border-radius: 8px !important;
+}
+
+/* One magnifier glyph, three sizes: 14 in the rail, 16 in the plugin
+   list's field, 12 in the shortcuts dialog's. The rail already sits on
+   the documented 14, so both of these come to it. */
+@host(searchControl.search.exact) svg,
+@host(shortcutDialog.searchField.exact) svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* ------------------------------------------------------------------
+   Part 10 — right rail entry cards. Five cards in one stack, and two
+   of them (新建终端, 更多工具) were wearing a second scale: title
+   14/400 and body 11/400 against 13/460 and 12/395 in the three around
+   them, glyphs at 26 and 22 against 20. Stacked at 3x the two read as
+   a different family. One stack, one scale.
+------------------------------------------------------------------ */
+
+@host(documentEntry.title.exact) {
+  font-size: 13px !important;
+  font-weight: 460 !important;
+  line-height: 19px !important;
+}
+@host(documentEntry.description.exact) {
+  font-size: 12px !important;
+  font-weight: 395 !important;
+  line-height: 17px !important;
+}
+@host(startGuide.moreAnchor.exact) @host(startGuide.entryTitle.exact) {
+  font-size: 13px !important;
+  font-weight: 460 !important;
+}
+@host(documentEntry.icon.exact) svg,
+@host(startGuide.entry.exact) svg {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+/* Same cards, two left edges: 新建终端 nested a second 14px pad inside
+   the first and sized its glyph box to the glyph (26), and 更多工具
+   padded 20 instead of 14. The stack's icon column and text column now
+   hold one line, like the rail's rows do. */
+@host(documentEntry.main.exact) {
+  padding-left: 0 !important;
+}
+@host(documentEntry.icon.exact),
+@host(startGuide.entryIcon.exact) {
+  width: 20px !important;
+  height: 20px !important;
+}
+@host(startGuide.moreAnchor.exact) @host(startGuide.entry.exact) {
+  padding: 12px 14px !important;
+}
+
+/* ------------------------------------------------------------------
+   Part 11 — trace view. Its five category hues are the waterfall's
+   legend and are left alone. Two things that did not belong: the search
+   magnifier shipped a third size (11, after 16 and 12), and the inline
+   kind-tag glyphs sat at 13x14 next to 13x13 siblings.
+------------------------------------------------------------------ */
+
+@host(pluginSearch.search.exact) svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+@host(trace.kindTagIcon.exact) svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+/* 650 is not a rung — the ladder tops out at 600. The tag label is the
+   only thing in the app at 650. */
+@host(trace.kindTagLabel.exact) {
+  font-weight: 600 !important;
+}
+/* The trace pane's "no matching trajectory" empty state used to hang off
+   @host(trace.tablePane.exact):has(@host(trace.contentColumn.exact):empty).
+   It is the one surface that needs a :has() rule, and a single :has()
+   rule is enough to make every class change in the document recalc all
+   7.4k nodes (measured 135 ms). The pane now falls back to the host's
+   own blank state. */
+
+/* The message footer is chrome on a fixed 30px button, but two of its
+   icon families were sized in em: at 内容字号 16 they grew to 17 while
+   the copy and branch glyphs beside them stayed at 15. Pin them, and
+   stop the flex row from squeezing one back to 14 at 内容字号 12. */
+@host(railAction.action.exact) svg,
+@host(composerTrigger.trigger.exact) svg {
+  width: 15px !important;
+  height: 15px !important;
+  flex: 0 0 auto !important;
+}
+
+/* The +40 / -0 diff tally is 0.75em of the content size: fine at 14
+   (10.5), 9px at 内容字号 12. It is a chrome chip inside a card, so it
+   takes the small rung. */
+@host(toolRow.diffAdded.exact),
+@host(toolRow.diffRemoved.exact) {
+  font-size: 11px !important;
+}
+
+/* ------------------------------------------------------------------
+   Part 12 — empty states. The automation page is the app's only fully
+   built one: illustration, a line of copy, an action. Its line shipped
+   at 14/400 in the tertiary grey, i.e. quieter than the button under it,
+   which inverts the block. One rung up in weight, one step up in ink.
+------------------------------------------------------------------ */
+
+/* The title class the host ships (emptyTitle) is not on the element in
+   this build — the h2 carries no class at all — so match it by position. */
+@host(searchPanel.emptyTitle.exact),
+@host(searchPanel.empty.exact) h2 {
+  font-weight: 460 !important;
+  color: var(--dsw-alias-label-secondary) !important;
+}

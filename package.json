@@ -1,0 +1,42 @@
+{
+  "name": "@kafukatree/ds-silky",
+  "version": "0.20.0",
+  "description": "DS Silky — refined typography, thoughtful cards and fluid streaming motion for DeepSeek Harness.",
+  "type": "module",
+  "main": "./lib/index.js",
+  "icon": "./assets/logo.svg",
+  "author": "KafukaTree",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/KafukaTree/ds-silky.git" },
+  "homepage": "https://github.com/KafukaTree/ds-silky#readme",
+  "bugs": { "url": "https://github.com/KafukaTree/ds-silky/issues" },
+  "keywords": ["deepseek-harness", "dsh", "theme", "typography", "streaming", "ui"],
+  "publishConfig": { "access": "public" },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/build.mjs --check",
+    "test": "npm run check && node --test tests/unit/*.test.mjs",
+    "test:browser": "npm run check && node tests/browser/run.mjs",
+    "verify": "npm test && npm run test:browser",
+    "prepack": "npm run build && npm test"
+  },
+  "exports": {
+    ".": { "default": "./lib/index.js" },
+    "./client": { "default": "./lib/client.js" },
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./assets/logo.svg"
+  },
+  "files": [
+    "lib/client.js", "lib/index.js", "cordis.patch.yml", "src", "scripts",
+    "tests/unit", "tests/browser/run.mjs", "tests/browser/fixture.html",
+    "assets", "locale", "DEVELOPMENT.md", "CHANGELOG.md"
+  ],
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "inject": [], "platform": "web", "immediately": true },
+    "manifestVersion": 1
+  },
+  "engines": { "dsh": ">=0.2.2-rc.1", "node": ">=22" },
+  "peerDependencies": { "@deepseek-ai/cordis": "^4.0.1" }
+}

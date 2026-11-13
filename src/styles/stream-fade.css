@@ -1,0 +1,24 @@
+/* Stream fade paint levels. The ink comes from --daf-ink on the highlighted
+   text's own element (a ::highlight() rule inherits custom properties from
+   its originating element), so one static rule set per opacity level serves
+   every colour. Rewriting a rule's colour per frame invalidated style for
+   the whole document: measured 74 ms at 7.5 k DOM nodes, 236 ms at 22.7 k,
+   i.e. the long-session streaming long tasks. Moving a Range between these
+   fixed levels is paint-only and measured at 0.0 ms. */
+::highlight(daf-fade-0) { color: color-mix(in srgb, var(--daf-ink, currentColor) 0.00%, transparent); }
+::highlight(daf-fade-1) { color: color-mix(in srgb, var(--daf-ink, currentColor) 6.67%, transparent); }
+::highlight(daf-fade-2) { color: color-mix(in srgb, var(--daf-ink, currentColor) 13.33%, transparent); }
+::highlight(daf-fade-3) { color: color-mix(in srgb, var(--daf-ink, currentColor) 20.00%, transparent); }
+::highlight(daf-fade-4) { color: color-mix(in srgb, var(--daf-ink, currentColor) 26.67%, transparent); }
+::highlight(daf-fade-5) { color: color-mix(in srgb, var(--daf-ink, currentColor) 33.33%, transparent); }
+::highlight(daf-fade-6) { color: color-mix(in srgb, var(--daf-ink, currentColor) 40.00%, transparent); }
+::highlight(daf-fade-7) { color: color-mix(in srgb, var(--daf-ink, currentColor) 46.67%, transparent); }
+::highlight(daf-fade-8) { color: color-mix(in srgb, var(--daf-ink, currentColor) 53.33%, transparent); }
+::highlight(daf-fade-9) { color: color-mix(in srgb, var(--daf-ink, currentColor) 60.00%, transparent); }
+::highlight(daf-fade-10) { color: color-mix(in srgb, var(--daf-ink, currentColor) 66.67%, transparent); }
+::highlight(daf-fade-11) { color: color-mix(in srgb, var(--daf-ink, currentColor) 73.33%, transparent); }
+::highlight(daf-fade-12) { color: color-mix(in srgb, var(--daf-ink, currentColor) 80.00%, transparent); }
+::highlight(daf-fade-13) { color: color-mix(in srgb, var(--daf-ink, currentColor) 86.67%, transparent); }
+::highlight(daf-fade-14) { color: color-mix(in srgb, var(--daf-ink, currentColor) 93.33%, transparent); }
+::highlight(daf-fade-15) { color: color-mix(in srgb, var(--daf-ink, currentColor) 100.00%, transparent); }
+

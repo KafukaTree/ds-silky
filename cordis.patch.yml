@@ -1,0 +1,5 @@
+# DS Silky: typography, cards and fluid motion for DeepSeek Harness.
+- insert:
+    - id: ds-silky
+      name: '@kafukatree/ds-silky'
+      config: {}

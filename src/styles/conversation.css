@@ -1,0 +1,764 @@
+/* ------------------------------------------------------------------
+   Part 2 — surfaces that do not read the token sheet.
+
+   a. The font shorthand resets font-weight, so the chat markdown body
+      restates its weight; emphasis goes to 540, not 700.
+   b. The markdown sheet pins bullet markers to a 24px line box.
+   c. The user bubble is plain text, not markdown.
+   d. Both sidebars carry their own hardcoded scale (the left one 14/22
+      with an 18px brand, the right one 14/11 in 20px-radius cards), so
+      they are pinned to the same 13 / 12 / 11 ladder as the rest of the
+      chrome. See DSH-TYPOGRAPHY.md section 8.
+------------------------------------------------------------------ */
+
+[data-conversation-region="chat"] @host(fragment.markdown.contains) {
+  font-weight: 400 !important;
+  line-height: calc(var(--dsh-content-font-size, 14px) * 1.73) !important;
+}
+[data-conversation-region="chat"] @host(fragment.markdown.contains) :is(h1, h2, h3, h4, h5, h6) {
+  font-weight: 540 !important;
+}
+[data-conversation-region="chat"] @host(fragment.markdown.contains) :is(strong, b) {
+  font-weight: 600 !important;
+}
+[data-conversation-region="chat"] @host(fragment.markdown.contains) li::marker {
+  line-height: inherit;
+}
+
+[data-conversation-region="chat"] [data-message-bubble] {
+  border-radius: 16px !important;
+  font-family: var(--dsh-font-family-prose) !important;
+  font-size: var(--dsh-content-font-size, 14px) !important;
+  line-height: calc(var(--dsh-content-font-size, 14px) * 1.73) !important;
+  font-weight: 400 !important;
+}
+/* User bubble: the shipped fill is a saturated blue tint, which reads as
+   a colored capsule against an otherwise neutral page. Claude uses a
+   plain neutral wash; same geometry, no hue.
+   The token is replaced once on body, where the theme declares it, and
+   never on a component: the durable user row, the local submission echo
+   (data-submission-echo) and the pre-admission steering row are three
+   different elements, and only the durable one carries a
+   data-chat-flow-kind. Overriding per row left the echo painting the
+   shipped blue for the round-trip, then snapping to grey — a visible
+   flash on every send. The token is read by every user-authored bubble
+   (user message, question reply, /goal echo), so one inherited value
+   covers all three states from the first paint.
+   Same specificity as the theme's own body rule and a later sheet, so
+   no !important is needed. */
+html body {
+  --dsw-specific-bubble: rgba(19, 20, 24, .05);
+}
+html body[data-ds-dark-theme] {
+  --dsw-specific-bubble: rgba(255, 255, 255, .07);
+}
+[data-conversation-region="chat"] [data-message-bubble] :is(code, pre, kbd, samp) {
+  font-family: var(--ds-font-family-code) !important;
+}
+
+/* Radius audit: three values sat outside the 8 / 12 / 16 ladder. */
+@host(codeBlock.bannerWrap.contains) {
+  border-radius: 12px 12px 0 0 !important;
+}
+@host(questionBubble.bubble.exact) {
+  border-radius: 16px !important;
+}
+@host(composer.card.exact) {
+  border-radius: 16px !important;
+}
+/* The host also ships [data-composer-card] { border-radius: 18px
+   !important } at the same specificity, and it lands after this sheet —
+   so the composer kept a radius that is on no rung of the ladder. Two
+   classes outrank it whatever the order. */
+[data-composer-card]@host(composer.card.exact) {
+  border-radius: 16px !important;
+}
+/* Composer: a 14/24 field on a 36px floor, plus a 42px toolbar, made the
+   box 99px tall before a word was typed. Claude's is lower and lighter —
+   13px on a 30px floor, with the top padding trimmed to match. */
+@host(composer.input.exact) {
+  font-size: 13px !important;
+  line-height: 21px !important;
+  min-height: 30px !important;
+  padding: 4px 8px 0 14px !important;
+}
+@host(composer.placeholder.exact) {
+  font-size: 13px !important;
+  line-height: 21px !important;
+}
+@host(composer.card.exact) {
+  padding-top: 6px !important;
+}
+/* File-card type badge: 40px tile at 10px. The static CSS audit found
+   the same 10px rung on eleven tiles across six modules (_keyBadge,
+   vdszpW_tile, _cardIcon, _option, _notice …) — it is the host's small
+   tile step, not a stray value, and this badge is the same role as
+   vdszpW_tile. Left as shipped. */
+
+/* File-card secondary line is the only 10px text on the page, under the
+   11px floor the rest of the chrome keeps. */
+@host(fileCard.secondaryText.exact) {
+  font-size: 11px !important;
+  line-height: 16px !important;
+}
+
+/* Delivery cards keep their established text scale; reduce the container
+   instead. Auto height allows larger user fonts and native actions to fit. */
+[data-presented-file] {
+  height: auto !important;
+  min-height: 52px !important;
+  padding: 6px 10px !important;
+  gap: 8px !important;
+}
+
+/* Question replies use a second bubble component (RZvdfa); it reads the
+   same --dsw-specific-bubble token, so the body override above covers it
+   without a per-component rule. */
+
+/* Links: shipped as blue at weight 500 with no underline, so a link and
+   a bold word looked alike. Claude underlines them; the weight goes back
+   to 400 and the underline carries the affordance. */
+[data-conversation-region="chat"] @host(fragment.markdown.contains) a {
+  font-weight: 400 !important;
+  text-decoration: underline !important;
+  text-decoration-thickness: 1px !important;
+  text-underline-offset: 2px !important;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent) !important;
+}
+[data-conversation-region="chat"] @host(fragment.markdown.contains) a:hover {
+  text-decoration-color: currentColor !important;
+}
+
+/* Code block: the card shipped at 16px while every other card is 12. */
+@host(codeBlock.card.contains) {
+  border-radius: 12px !important;
+}
+@host(codeToolbar.header.contains) {
+  border-radius: 12px 12px 0 0 !important;
+  /* The header shipped 18px on the right while the code body uses 22,
+     so the copy button sat 4px inside the code's right edge. */
+  padding: 3px 22px 2px !important;
+  min-height: 0 !important;
+}
+/* The language label and the two actions were 24px squares with 10px of
+   padding above them, so a code block opened with a 42px band for one
+   11px word — more than a line of the code below it. Tighter row,
+   smaller targets. */
+@host(codeToolbar.action.contains) {
+  width: 20px !important;
+  height: 20px !important;
+}
+@host(codeToolbar.actions.contains) {
+  gap: 2px !important;
+}
+@host(codeBlock.card.contains) pre {
+  border-radius: 0 0 12px 12px !important;
+}
+/* The host scales <code> to 0.93em inside a block, which put every token
+   at 11.16px — off the ladder and half a pixel under the pre's own 12.
+   A block is not inline code; it keeps the pre's size. */
+@host(codeBlock.card.contains)@host(fragment.md_code_block.contains) pre code {
+  font-size: 12px !important;
+}
+
+/* Terminal block header: the copy action shipped as the word 复制 in a
+   27px grey chip, sitting inline with the command, so on a long command
+   it ate a column of the code and read as a label rather than an action.
+   Claude's card header carries a bare outline glyph for the same job.
+   The label stays in the DOM for screen readers; only the paint is an
+   icon now, and the button is 7px narrower. */
+@host(terminal.copyButton.exact) {
+  position: relative !important;
+  flex: 0 0 auto !important;
+  align-self: flex-start !important;
+  display: block !important;
+  width: 20px !important;
+  height: 20px !important;
+  margin: -1px -3px 0 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background-color: transparent !important;
+  color: var(--dsw-alias-label-secondary) !important;
+  /* The word 复制 is still a text node — screen readers keep it — but it
+     is pushed out of the 20px box and clipped. text-indent, not
+     font-size: 0, so the label stays on the 13px rung of the ladder. */
+  text-indent: -9999px !important;
+  overflow: hidden !important;
+  cursor: pointer !important;
+  transition: background-color .12s ease, color .12s ease !important;
+}
+@host(terminal.copyButton.exact)::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  margin: auto !important;
+  width: 14px !important;
+  height: 14px !important;
+  background-color: currentColor !important;
+  -webkit-mask: var(--dsh-icon-copy) center / contain no-repeat;
+  mask: var(--dsh-icon-copy) center / contain no-repeat;
+}
+@host(terminal.copyButton.exact).dsh-copied::before {
+  background-color: #2f7d4f !important;
+  -webkit-mask: var(--dsh-icon-check) center / contain no-repeat;
+  mask: var(--dsh-icon-check) center / contain no-repeat;
+}
+@host(codeToolbar.action.contains).dsh-copied > svg {
+  display: none !important;
+}
+@host(codeToolbar.action.contains).dsh-copied::before {
+  content: "" !important;
+  width: 14px !important;
+  height: 14px !important;
+  background-color: #2f7d4f !important;
+  -webkit-mask: var(--dsh-icon-check) center / contain no-repeat;
+  mask: var(--dsh-icon-check) center / contain no-repeat;
+}
+@host(terminal.copyButton.exact):hover {
+  background-color: rgba(0, 0, 0, .05) !important;
+  color: var(--dsw-alias-label-secondary) !important;
+}
+@host(terminal.copyButton.exact):active {
+  background-color: rgba(0, 0, 0, .09) !important;
+}
+[data-ds-dark-theme] @host(terminal.copyButton.exact):hover {
+  background-color: rgba(255, 255, 255, .09) !important;
+}
+[data-ds-dark-theme] @host(terminal.copyButton.exact):active {
+  background-color: rgba(255, 255, 255, .14) !important;
+}
+
+/* Two cards, one family. The code block is a 12px-radius #f9fafb panel
+   with no edge; the terminal block was the same fill at 16px radius with
+   a 0.5px hairline. Same surface, same corners, no line. */
+@host(terminal.block.contains) {
+  border-radius: 12px !important;
+  border: 0 !important;
+}
+
+/* Terminal block body: the command and its output shipped at 12px SF Mono
+   in the same full-strength ink as the prose, so a tool run — which is
+   scaffolding, not the answer — was the loudest text on the page. One
+   rung down to 11/17. The plain runs go grey (the shiki spans with no
+   token colour inherit this), so the syntax colours are the only
+   saturated ink left in the card. */
+@host(terminal.block.contains) @host(inlineText.text.contains),
+@host(terminal.block.contains) @host(terminal.line.contains) {
+  font-size: 11px !important;
+  line-height: 17px !important;
+  color: #5f6368 !important;
+}
+@host(terminal.block.contains) @host(terminal.cwd.contains) {
+  font-size: 11px !important;
+  line-height: 17px !important;
+}
+[data-ds-dark-theme] @host(terminal.block.contains) @host(inlineText.text.contains),
+[data-ds-dark-theme] @host(terminal.block.contains) @host(terminal.line.contains) {
+  color: #c3c7cc !important;
+}
+
+/* Run state was a solid 6px disc of green or red — the only filled shape
+   in an otherwise stroked icon set, and at 6px it read as a smudge. It
+   becomes a ring in the same ink: same signal, same drawing language as
+   every other glyph here. */
+@host(terminalState.dot.contains)::after {
+  width: 7px !important;
+  height: 7px !important;
+  box-sizing: border-box !important;
+  background-color: transparent !important;
+  border: 1.2px solid currentColor !important;
+  border-radius: 50% !important;
+}
+
+/* The exit-code tag shipped as a 999px white pill with full-strength red
+   text, so it looked like a button bolted onto the card. A small rounded
+   tag with a tint of its own colour sits back where it belongs. */
+@host(terminal.status.contains) {
+  height: 18px !important;
+  padding: 0 6px !important;
+  border-radius: 8px !important;
+  background-color: color-mix(in srgb, currentColor 8%, transparent) !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+}
+
+/* Floating surfaces (menus, pickers) drew their edge as a 0.5px ring in
+   the shadow stack — a hairline that made every menu look boxed in.
+   Claude's menus have no edge at all: they float on a soft, wide,
+   three-layer shadow. Same here. */
+@host(menuSurface.surface.contains) {
+  box-shadow:
+    0 1px 2px rgba(16, 18, 22, .05),
+    0 4px 12px rgba(16, 18, 22, .07),
+    0 16px 40px rgba(16, 18, 22, .07) !important;
+}
+[data-ds-dark-theme] @host(menuSurface.surface.contains) {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, .30),
+    0 4px 12px rgba(0, 0, 0, .34),
+    0 16px 40px rgba(0, 0, 0, .30) !important;
+}
+
+/* List items sit on consecutive lines with no gap, so a 10-item list
+   reads as a block. A 4px step between siblings gives the eye a rest
+   without changing the line height. */
+[data-conversation-region="chat"] @host(fragment.markdown.contains) li + li {
+  margin-top: 4px !important;
+}
+
+/* Table cells: the shorthand still carried 360, so the body weight token
+   never reached the cells and the table read lighter than the prose.
+   Cells also had no horizontal padding, so columns butted together. */
+[data-conversation-region="chat"] @host(fragment.markdown.contains) :is(th, td) {
+  padding: 8px 12px !important;
+}
+[data-conversation-region="chat"] @host(fragment.markdown.contains) :is(th, td):first-child {
+  padding-left: 0 !important;
+}
+[data-conversation-region="chat"] @host(fragment.markdown.contains) :is(th, td):last-child {
+  padding-right: 0 !important;
+}
+
+/* Trajectory kind labels ship at 10px, under the 11px floor the rest of
+   the chrome keeps. The colour stays — in that view it encodes the row
+   type. */
+@host(trace.kindTagLabel.exact) {
+  font-size: 11px !important;
+  line-height: 16px !important;
+}
+
+/* File-card badge: the last blue glyph on the page. */
+@host(fileCard.fileIcon.exact),
+@host(fileCard.fileIcon.exact) svg,
+@host(fileTile.tile.exact) svg {
+  color: var(--dsw-alias-label-secondary) !important;
+}
+
+/* Small cards: the file card (60px) and the task strip (36px) ship at a
+   16px radius, which on a 36px row is nearly a pill. The card ladder
+   elsewhere is 12. */
+@host(fileCard.file.exact),
+@host(settingsSection.root.exact) {
+  border-radius: 12px !important;
+}
+
+/* Tool-row ink: the shipped rows use label-secondary (#81858c); sampled
+   against Claude's rows (median #666) they read washed out. Same size,
+   one step darker, so the list stops fading into the page. */
+@host(fileRow.row.contains),
+@host(shell.root.exact),
+@host(pluginCard.title.exact) {
+  color: #5f6368 !important;
+}
+[data-ds-dark-theme] @host(fileRow.row.contains),
+[data-ds-dark-theme] @host(shell.root.exact),
+[data-ds-dark-theme] @host(pluginCard.title.exact) {
+  color: #a3a8af !important;
+}
+
+/* Tool-group meta: the summary line and the group title shipped at 14px,
+   the same size as the prose, so the hierarchy flattened. Claude keeps
+   this layer a step down: 13 / 19 at 395. */
+@host(shell.root.exact),
+@host(pluginCard.title.exact) {
+  font-size: 13px !important;
+  line-height: 19px !important;
+  font-weight: 395 !important;
+}
+
+/* Approval card: a 1px amber border around the whole card plus an amber
+   strip is two warnings for one message. The strip keeps the colour;
+   the card keeps a hairline. */
+@host(taskCard.card.exact) {
+  border-color: rgba(0, 0, 0, .10) !important;
+}
+[data-ds-dark-theme] @host(taskCard.card.exact) {
+  border-color: rgba(255, 255, 255, .12) !important;
+}
+@host(taskCard.headline.exact) {
+  font-weight: 540 !important;
+}
+
+/* Chat tabs: the active tab is brand blue with a 2px blue underline —
+   the last saturated mark on the page. Claude marks the active tab with
+   ink; same geometry, no hue. */
+@host(chatNavigation.tab.exact) {
+  font-weight: 480 !important;
+}
+@host(chatNavigation.tabActive.exact),
+@host(chatNavigation.tabActive.exact) @host(chatNavigation.tabLabel.exact) {
+  color: var(--dsw-alias-label-primary) !important;
+}
+@host(chatNavigation.tabActive.exact)::after {
+  background: var(--dsw-alias-label-primary) !important;
+}
+/* The tab-bar overflow "…" shipped at 13px while every other meta icon
+   in this bar is 14. */
+@host(chatNavigation.viewsMore.exact) svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* Icon scale: every 28px action button on the page draws a 15x15 icon in
+   its 16px content box — except this one, which shipped 15x15 in the
+   message footer but 16x17 in the tool rows: a pixel taller than wide,
+   so the copy and branch glyphs were subtly squashed. One size, square. */
+@host(headerAction.action.exact) svg {
+  width: 15px !important;
+  height: 15px !important;
+  flex: 0 0 auto !important;
+}
+/* File chips size their glyph at 1.1em, so the same icon measured 14.3px
+   in a 13px chip and 15.4px in a 14px one. Pinned to the 14px meta tier. */
+@host(fragment.fileMention.contains) svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+/* The composer's scope chevron was 10px beside 11px text — the smallest
+   icon on the page, and too fine to read as a control. */
+@host(disclosure.chevron.exact) svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+/* Weight ladder: 360 code / 395 chrome / 400 body / 460 strong /
+   480 label / 540 heading / 600 bold. Three components sat between
+   rungs — card titles and the exit-code badge at 500, file chips at 500
+   beside 360-weight inline code. 460 is not an outlier: it is the strong
+   rung, used by project titles and by a session title on hover/select. */
+@host(fileCard.fileName.exact),
+@host(settingsSection.title.exact),
+@host(fileBadge.badge.exact) {
+  font-weight: 480 !important;
+}
+@host(fragment.fileMention.contains) {
+  font-weight: 400 !important;
+}
+/* Hover feedback audit: every clickable thing on the page responds to
+   the pointer except the inactive tab and the task-bar toggle, which
+   had no :hover rule at all. Forcing the pseudo-class and diffing every
+   computed property returned "no change" for both. */
+@host(chatNavigation.tab.exact):not(@host(chatNavigation.tabActive.exact)):hover {
+  color: var(--dsw-alias-label-secondary) !important;
+}
+@host(settingsSection.header.exact):hover {
+  background: var(--dsw-alias-interactive-bg-hover) !important;
+  border-radius: 8px !important;
+}
+/* Focus rings: the rail's own buttons draw a 2px inset solid ring, but
+   every list row fell back to Chrome's outline-style: auto — a ring
+   drawn outside the box that overlaps its neighbours in a 32px list.
+   One geometry: inset, solid, so the ring never leaves the row. */
+@host(sessionList.family.contains):focus-visible,
+@host(sidebar.newSession.exact):focus-visible,
+@host(sessionSection.sessionOverflowButton.exact):focus-visible {
+  outline-style: solid !important;
+  outline-offset: -2px !important;
+}
+/* Everything else fell back to Chrome's outline-style: auto — a thick
+   stroke drawn OUTSIDE the box, which on a 30px control in a row runs
+   over its neighbours. One geometry: 2px, solid, inset — the same
+   numbers the host's own editor toolbar uses. :where() keeps the
+   specificity at one pseudo-class, so three host decisions still win:
+   menus paint focus as a background and set outline: none, the
+   pointer-modality rule zeroes the ring colour for mouse users (that
+   transparent ring is not a bug), and controls with their own ring keep
+   their own offset. */
+:where(button, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: -2px;
+}
+/* Markdown links already draw their ring as a 2px box-shadow; an inset
+   outline on top of it would be two rings on one word. */
+@host(fragment.markdown.contains) a:focus-visible {
+  outline: none;
+}
+/* Text fields are not buttons. The ring belongs on whatever frame holds
+   them — a raw <input> inside a rounded field has square corners, so the
+   generic rule drew a blue box inside a rounded one. Only the fields
+   whose frame we actually style get suppressed; everything else keeps
+   Chrome's own ring rather than going dark. */
+:where(@host(sessionSection.search.exact), @host(searchPanel.searchField.exact), @host(pluginSearch.search.exact), [data-composer-card])
+  :where(input, textarea, [contenteditable]):focus-visible {
+  outline: none;
+}
+/* The sidebar search pill. Its resting border is a 0.5px hairline and
+   the host gives it no focus state at all, so with the input's ring
+   suppressed the field went dark. The trace view's search field is the
+   same control and the host already turns its hairline blue — same
+   move here, width untouched. */
+@host(sessionSection.search.exact):focus-within,
+@host(searchPanel.searchField.exact):focus-within {
+  border-color: var(--dsw-alias-state-business-primary) !important;
+}
+/* Two of the composer's triggers draw their ring as an outside
+   box-shadow. They take the outline like everything else, so drop the
+   shadow — otherwise the keyboard ring is two rings on one pill. */
+:is(@host(menuTrigger.trigger.exact), @host(selectTrigger.trigger.exact)):focus-visible {
+  box-shadow: none !important;
+}
+/* The search field sits in a section header that adds 4px of horizontal
+   padding, so the pill ran x=12..268 while every row below it runs
+   x=8..272. Zero the padding in search mode and it lines up. */
+@host(sessionSection.searchSpacingMotion.exact) {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+/* The retry notice is a collapsed details/summary whose marker the host
+   suppressed (display: inline-flex + list-style: none), so a block that
+   expands to show the delay and the failure reason looked like one more
+   line of grey meta text. Give it back a chevron. */
+@host(retry.retrySummary.exact) {
+  display: inline-flex !important;
+  align-items: center !important;
+}
+@host(retry.retrySummary.exact)::after {
+  content: "" !important;
+  width: 5px !important;
+  height: 5px !important;
+  margin-left: 5px !important;
+  border-right: 1.2px solid currentColor !important;
+  border-bottom: 1.2px solid currentColor !important;
+  transform: translateY(-1px) rotate(-45deg) !important;
+  transition: transform .15s cubic-bezier(.4, 0, .2, 1) !important;
+}
+@host(retry.retryRow.exact)[open] @host(retry.retrySummary.exact)::after {
+  transform: translateY(1px) rotate(45deg) !important;
+}
+/* Right-pane start cards: the five entries still shipped the coloured
+   pictograms (amber folder, blue terminal / window / globe) after the
+   rails and the chat had gone ink-only. The colour is hard-coded on the
+   path attributes, not on the element, so it has to be caught down there.
+   The folder is a two-tone drawing — its filled body becomes a wash of
+   the same ink rather than a solid block, so it keeps its weight. */
+@host(startGuide.entry.exact) svg :is(path, circle, rect, line, polyline, ellipse),
+@host(documentEntry.family.contains) svg :is(path, circle, rect, line, polyline, ellipse) {
+  stroke: currentColor !important;
+}
+@host(startGuide.entry.exact) svg path[fill]:not([fill="none"]),
+@host(documentEntry.family.contains) svg path[fill]:not([fill="none"]) {
+  fill: currentColor !important;
+  fill-opacity: .16 !important;
+}
+/* Quote chips: icon + source both shipped in the link blue, but the chip
+   is not a link (cursor: auto, no role, no handler) — blue in this
+   interface promises a click. The quote icon already says "quotation",
+   so the chip goes neutral. */
+@host(quote.quote.exact) {
+  color: var(--dsw-alias-label-secondary) !important;
+}
+@host(quote.marker.exact) {
+  color: var(--dsw-alias-label-tertiary) !important;
+}
+/* Status pills ("预览版" on the new-session hero, "实验性" in the plugin
+   list) shipped as blue-on-blue. The words already say what they are;
+   the hue only borrowed the link colour, which elsewhere means
+   "clickable". Same neutral treatment as the quote chip. */
+@host(preview.previewBadge.exact),
+@host(settingsPage.statusTag.exact) {
+  background: var(--dsw-alias-interactive-bg-hover) !important;
+  color: var(--dsw-alias-label-secondary) !important;
+}
+/* Same 1.1em sizing on the external-link globe: 15.4px beside 14px text. */
+[data-conversation-region="chat"] @host(fragment.markdown.contains) a svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* Code is code: the shipped --ds-font-family-code starts with
+   Anthropic Sans, which is proportional, so every inline chip and code
+   block was rendering with i/m widths of 11.6 / 42. Mono first, the
+   text face only as the CJK fallback. */
+
+/* Inline code: three sizes (11.4 / 12.25 / 13) and two radii shipped in
+   one message. One chip: 13px at a 14px body, 4px radius. */
+[data-conversation-region="chat"] @host(fragment.markdown.contains) code {
+  font-size: .93em !important;
+  border-radius: 4px !important;
+  padding: 0 4px !important;
+}
+/* Inside a thinking block the inline chip is the only thing that can
+   carry emphasis in a wall of grey prose. Claude keeps the chip neutral
+   and puts the colour in the text — a warm rust on a light warm grey.
+   Same structure here, the app's own blue instead: neutral chip, blue
+   ink. Body prose keeps the host's neutral chip; only 思考 is tinted. */
+@host(toolGroup.body.exact) @host(fragment.markdown.contains) :not(pre) > code {
+  color: #2f5ac6 !important;
+  background-color: #f0f1f4 !important;
+}
+body[data-ds-dark-theme] @host(toolGroup.body.exact) @host(fragment.markdown.contains) :not(pre) > code {
+  color: #9ab8f5 !important;
+  background-color: rgba(255, 255, 255, .07) !important;
+}
+
+/* Right-pane file tree: file-type colours are the last saturated pixels
+   on the page, and the icons came from two drawing systems. Text-ish
+   files get a document glyph tinted per kind (blue html, red pdf, amber
+   ppt, violet image) with the tint baked into detail paths; code files
+   skip that and paste the actual brand logo (the yellow JavaScript
+   square) in at 16px. Side by side the tree read as a colour swatch.
+   Now one ink and two shapes, the way Claude does it: code files get an
+   angle-bracket pair, everything else gets a document outline, folders
+   keep a folder. Whatever the host drew is hidden and the shape comes
+   from a mask, so no per-kind tint can leak back in. */
+body {
+  --dsh-icon-doc: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 1.5h5L13 5v8a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 3 13V3a1.5 1.5 0 0 1 1.5-1.5Z' fill='none' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M9.5 1.5V5H13' fill='none' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --dsh-icon-code: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5.7 4.7 2.4 8l3.3 3.3' fill='none' stroke='%23000' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M10.3 4.7 13.6 8l-3.3 3.3' fill='none' stroke='%23000' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --dsh-icon-folder: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M1.50439 3.11059C1.50439 2.55831 1.95211 2.1106 2.50439 2.1106H5.43389C5.67773 2.1106 5.91318 2.19969 6.09593 2.36113L7.71649 3.79265C7.89924 3.95409 8.1347 4.04319 8.3785 4.04319H13.4958C14.0481 4.04319 14.4958 4.4909 14.4958 5.04319V12.8894C14.4958 13.4417 14.0481 13.8894 13.4958 13.8894H2.50439C1.95211 13.8894 1.50439 13.4417 1.50439 12.8894V4.04319V3.11059Z' fill='none' stroke='%23000' stroke-width='1.3'/%3E%3Cpath d='M3.63501 7.66614H12.3647' fill='none' stroke='%23000' stroke-width='1.3'/%3E%3C/svg%3E");
+  --dsh-icon-globe: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='5.7' fill='none' stroke='%23000' stroke-width='1.2'/%3E%3Cellipse cx='8' cy='8' rx='2.6' ry='5.7' fill='none' stroke='%23000' stroke-width='1.2'/%3E%3Cpath d='M2.3 8h11.4M3.2 5.2h9.6M3.2 10.8h9.6' fill='none' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");
+  --dsh-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='2.6' y='3.6' width='10.8' height='8.8' rx='1.6' fill='none' stroke='%23000' stroke-width='1.2'/%3E%3Ccircle cx='6.1' cy='6.8' r='1' fill='%23000'/%3E%3Cpath d='M3.6 11.6 6.4 8.8l1.8 1.7 1.6-1.4 2.6 2.5' fill='none' stroke='%23000' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --dsh-icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.4 8.5 6.4 11.5 12.6 4.9' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --dsh-icon-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='9' width='12' height='12' rx='2.4'/%3E%3Cpath d='M19 15h1a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-9a2 2 0 0 0-2 2v1'/%3E%3C/svg%3E");
+}
+:is(@host(fileChip.fileIcon.exact), @host(titleGlyph.titleIcon.exact), @host(panelTitle.titleIcon.exact), @host(fileCard.fileIcon.exact)) {
+  color: var(--dsw-alias-label-tertiary) !important;
+  background-color: currentColor !important;
+  -webkit-mask: var(--dsh-icon-doc) center / contain no-repeat;
+  mask: var(--dsh-icon-doc) center / contain no-repeat;
+}
+:is(@host(fileChip.fileIcon.exact), @host(titleGlyph.titleIcon.exact), @host(panelTitle.titleIcon.exact), @host(fileCard.fileIcon.exact)) > * {
+  display: none !important;
+}
+/* File cards carried the host's 40px tinted tile with a brand pictogram
+   inside — a different drawing system from the tree and the rail, and
+   the biggest glyph in the transcript. Same ink, same glyph, 28px. */
+@host(fileCard.fileIcon.exact) {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 8px !important;
+  -webkit-mask-size: 18px 18px !important;
+  mask-size: 18px 18px !important;
+}
+/* The kind is mirrored onto the tile by tagFileIcons() as data-daf-icon.
+   A :has(svg[class*=…]) selector would do this in CSS, but any :has()
+   rule makes the engine invalidate the whole document on every class
+   change: measured 135 ms per keystroke/resize on the 7.4k-node
+   transcript. Tagging is a one-off attribute on the tile at mount. */
+@host(fileCard.fileIcon.exact)[data-daf-icon="image"] {
+  -webkit-mask-image: var(--dsh-icon-image) !important;
+  mask-image: var(--dsh-icon-image) !important;
+}
+@host(fileCard.fileIcon.exact)[data-daf-icon="html"] {
+  -webkit-mask-image: var(--dsh-icon-globe) !important;
+  mask-image: var(--dsh-icon-globe) !important;
+}
+@host(fileCard.fileIcon.exact)[data-daf-icon="code"] {
+  -webkit-mask-image: var(--dsh-icon-code) !important;
+  mask-image: var(--dsh-icon-code) !important;
+}
+/* HTML keeps a globe — it is a page, not a source file, and the host
+   already drew one (a blue one). Same outline, same ink, its own shape. */
+svg@host(fileGlyph.html.exact) {
+  -webkit-mask: var(--dsh-icon-globe) center / contain no-repeat;
+  mask: var(--dsh-icon-globe) center / contain no-repeat;
+}
+svg@host(fileGlyph.image.exact) {
+  -webkit-mask: var(--dsh-icon-image) center / contain no-repeat;
+  mask: var(--dsh-icon-image) center / contain no-repeat;
+}
+/* The 文件 tab's own glyph is a filled folder; the tree below it draws
+   an outline one. Same glyph as the tree. */
+@host(panelTitle.titleIcon.exact) {
+  -webkit-mask: var(--dsh-icon-folder) center / contain no-repeat;
+  mask: var(--dsh-icon-folder) center / contain no-repeat;
+}
+
+/* Composer: the send button is the loudest colour on an otherwise
+   neutral page. Claude's is ink; the brand blue stays for selection
+   and focus states only. */
+@host(composer.primary.exact) {
+  background: var(--dsw-alias-label-primary) !important;
+  color: #fff !important;
+}
+@host(composer.primary.exact):disabled {
+  background: rgba(19, 20, 24, .10) !important;
+  color: rgba(19, 20, 24, .34) !important;
+}
+[data-ds-dark-theme] @host(composer.primary.exact) {
+  background: #f2f2f0 !important;
+  color: #131418 !important;
+}
+[data-ds-dark-theme] @host(composer.primary.exact):disabled {
+  background: rgba(255, 255, 255, .12) !important;
+  color: rgba(255, 255, 255, .38) !important;
+}
+/* Small controls: 4px next to 8px reads as a different system. */
+@host(selectTrigger.trigger.exact),
+@host(menuTrigger.trigger.exact) {
+  border-radius: 8px !important;
+}
+
+/* Tool groups: the shipped body caps at 400px and scrolls inside the
+   page, which puts a second scrollbar a few pixels from the real one.
+   Claude lets the group flow inline. */
+@host(pluginCard.body.exact) {
+  max-height: none !important;
+  overflow: visible !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+/* These rows live inside a 24px flow item that sets the real rhythm.
+   An earlier version forced min-height 32 / padding 6 on the row, so the
+   row grew to 44 and spilled 20px past its own flow item — rows then
+   overlapped their neighbours, which is what made the spacing read as
+   12px here and 40px there, and what put a hairline across the next
+   row's glyphs. The host's own box is the right one; only the ink
+   changes here. */
+@host(fileRow.row.contains) {
+  border-bottom: 0 !important;
+}
+/* The label and the preview shipped on different line boxes (24 and 20),
+   so 思考 sat a couple of pixels lower than the text beside it and the
+   row read ragged. One line box, one baseline. */
+@host(fileRow.title.contains) {
+  line-height: 20px !important;
+}
+/* The preview cut off with an ellipsis — a hard glyph at the right edge
+   that reads as punctuation rather than as "there is more". Claude fades
+   the tail out instead. */
+@host(fileRow.row.contains) @host(reasoning.summaryText.exact) {
+  text-overflow: clip !important;
+}
+/* The mask goes on the summary column, not the text run: the text run
+   shrinks to its content, so a short preview would have had its own last
+   characters faded. For the mask to sit at the row's right edge the whole
+   text column has to span the free width, so the three wrappers are told
+   to grow. Then the fade only bites when the text actually overflows. */
+@host(fileRow.row.contains) @host(reasoning.summary.exact),
+@host(fileRow.row.contains) @host(readBlock.root.contains),
+@host(fileRow.row.contains) @host(readBlock.content.contains) {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+@host(fileRow.row.contains) @host(reasoning.summary.exact) {
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent 100%);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent 100%);
+}
+/* Disclosure chevrons pointed up when open and down when shut, so a
+   closed row and an open row differed only by a flip of the same glyph.
+   Claude uses the tree convention: right while shut, down while open. */
+svg[data-icon*="chevron"] {
+  transform-box: view-box !important;
+  transform-origin: center !important;
+}
+[aria-expanded="false"] svg[data-icon="dsw-icon-chevron-down-outline-regular"] {
+  transform: rotate(-90deg) !important;
+}
+[aria-expanded="false"] svg[data-icon="dsw-icon-chevron-up-outline-regular"] {
+  transform: rotate(90deg) !important;
+}
+[aria-expanded="false"] svg[data-icon="dsw-icon-chevron-right-outline-regular"] {
+  transform: rotate(0deg) !important;
+}
+/* Open: always the down chevron. The host rotates its own down chevron by
+   180deg when open, which is what produced the up arrow — pin it back. */
+[aria-expanded="true"] svg[data-icon="dsw-icon-chevron-down-outline-regular"] {
+  transform: rotate(0deg) !important;
+}
+[aria-expanded="true"] svg[data-icon="dsw-icon-chevron-up-outline-regular"] {
+  transform: rotate(180deg) !important;
+}
+[aria-expanded="true"] svg[data-icon="dsw-icon-chevron-right-outline-regular"] {
+  transform: rotate(90deg) !important;
+}
+

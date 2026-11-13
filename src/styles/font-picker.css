@@ -1,0 +1,143 @@
+/* Font-family picker. Copies the host menu surface and row metrics
+   (bg/backdrop/shadow/elevation stroke/radius/13px rows) with the
+   --dsw-alias-* tokens only, so light and dark both follow the theme. */
+.daf-panel {
+  position: fixed;
+  z-index: 2147483000;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 4px;
+  border: 0;
+  border-radius: var(--dsw-radius-lg, 16px);
+  background: var(--dsw-specific-menu, var(--dsw-alias-bg-layer-1));
+  -webkit-backdrop-filter: var(--dsw-menu-backdrop-filter, blur(20px) saturate(1.6));
+  backdrop-filter: var(--dsw-menu-backdrop-filter, blur(20px) saturate(1.6));
+  --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
+  box-shadow: var(--dsw-elevation-prominent, 0 3px 8px rgba(0, 0, 0, .04));
+  color: var(--dsw-alias-label-primary);
+  font-family: var(--dsw-font-family, inherit);
+  font-size: 13px;
+  line-height: 20px;
+  overscroll-behavior: contain;
+  animation: daf-in .1s var(--ds-ease-in-out, ease-out);
+}
+.daf-panel[hidden] { display: none; }
+/* The host menus use the same stroke step-up in dark mode. */
+body[data-ds-dark-theme] .daf-panel {
+  --dsw-elevation-stroke-color: var(--dsw-alias-border-l3);
+}
+@keyframes daf-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .daf-panel { animation: none; }
+}
+
+.daf-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px 4px 8px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+}
+.daf-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.daf-reset {
+  flex: none;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: var(--dsw-radius-sm, 8px);
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font: inherit;
+  font-size: 11px;
+  line-height: 16px;
+  cursor: pointer;
+}
+.daf-reset:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+.daf-reset:disabled { color: var(--dsw-alias-label-dimmed, var(--dsw-alias-label-caption)); cursor: default; }
+.daf-reset:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+}
+
+.daf-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dsw-alias-scrollbar-bg-l2, rgba(128, 128, 128, .4)) transparent;
+}
+.daf-list::-webkit-scrollbar { width: 8px; }
+.daf-list::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--dsw-alias-scrollbar-bg-l2, rgba(128, 128, 128, .4));
+  background-clip: content-box;
+}
+
+.daf-group-title {
+  padding: 6px 8px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  font-weight: 480;
+  line-height: 15px;
+}
+.daf-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 8px;
+  border-radius: var(--dsw-radius-md, 12px);
+  color: var(--dsw-alias-label-primary);
+  cursor: pointer;
+}
+.daf-opt[data-active="true"] { background: var(--dsw-alias-interactive-bg-hover); }
+.daf-check {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 14px;
+  color: var(--dsw-alias-label-primary);
+  visibility: hidden;
+}
+.daf-opt[aria-selected="true"] .daf-check { visibility: visible; }
+.daf-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.daf-preview {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.daf-empty {
+  padding: 10px 8px 12px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+

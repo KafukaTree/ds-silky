@@ -1,0 +1,232 @@
+/* Fallback for the interface, code and terminal fonts. Deliberately not
+   !important: when a DSH font setting names a list, the theme writes it
+   inline on body and wins; when a field is empty, these values apply. */
+body {
+  --dsh-font-family-text: "Anthropic Sans";
+  --dsh-font-family-code: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --dsh-font-family-terminal: "SF Mono", Menlo, Consolas, monospace;
+  /* Optical sizing is the browser default; stated so a future reset does not
+     flatten the variable font's opsz axis (16-48 in these faces). */
+  font-optical-sizing: auto;
+}
+
+/* ------------------------------------------------------------------
+   Part 1 — the font system.
+
+   DSH states its whole type scale as custom-property families on body:
+   a font shorthand per role plus -font-family / -font-weight /
+   -line-height / -font-size / -font-style (180 declarations). A
+   component may read either the shorthand or a component variable, so
+   both are rewritten here; !important is required because the theme's
+   sheet loads before this plugin's.
+
+   Rhythm: UI body 13/19, prose 14/20 with leading = size x 1.43 (so the
+   font-size setting keeps working), message headings 20/16/15/14 at 540
+   instead of 21/19/18 at 700, code size x 1.5, nothing under 11px.
+
+   The prose family is applied through the markdown tokens rather than a
+   tag whitelist: everything the markdown renderer emits is Serif, while
+   tool rows, composer, cards and the sidebar stay in the UI font.
+------------------------------------------------------------------ */
+
+/* CJK fallback: Anthropic Serif has no Chinese glyphs, so Chinese falls
+   through to the next family in the stack. Songti SC only has
+   300/400/700/900, which snaps 460 to 400 and 540 to 700; Noto Serif SC
+   is variable (200-900), so every step lands where it is asked to.
+   Latin stays Anthropic Serif — fallback is per glyph, not per run. */
+body {
+  --dsh-font-family-prose: "Anthropic Serif", "Noto Serif SC", Georgia, "Times New Roman", serif;
+  font-synthesis: style;
+}
+
+/* UI scale: controls, chrome, lists. Global — every surface that reads a
+   token keeps the same rhythm whether it is chrome or content. */
+body {
+  --dsw-font-xxxs-11: 395 11px/16px var(--dsw-font-family) !important;
+  --dsw-font-xxxs-11-font-family: var(--dsw-font-family) !important;
+  --dsw-font-xxxs-11-font-weight: 395 !important;
+  --dsw-font-xxxs-11-line-height: 16px !important;
+  --dsw-font-xxxs-11-font-size: 11px !important;
+  --dsw-font-xxxs-11-font-style: normal !important;
+  --dsw-font-xxxs-strong-11: 480 11px/16px var(--dsw-font-family) !important;
+  --dsw-font-xxxs-strong-11-font-family: var(--dsw-font-family) !important;
+  --dsw-font-xxxs-strong-11-font-weight: 480 !important;
+  --dsw-font-xxxs-strong-11-line-height: 16px !important;
+  --dsw-font-xxxs-strong-11-font-size: 11px !important;
+  --dsw-font-xxxs-strong-11-font-style: normal !important;
+  --dsw-font-xxs-12: 395 12px/17px var(--dsw-font-family) !important;
+  --dsw-font-xxs-12-font-family: var(--dsw-font-family) !important;
+  --dsw-font-xxs-12-font-weight: 395 !important;
+  --dsw-font-xxs-12-line-height: 17px !important;
+  --dsw-font-xxs-12-font-size: 12px !important;
+  --dsw-font-xxs-12-font-style: normal !important;
+  --dsw-font-xxs-strong-12: 480 12px/17px var(--dsw-font-family) !important;
+  --dsw-font-xxs-strong-12-font-family: var(--dsw-font-family) !important;
+  --dsw-font-xxs-strong-12-font-weight: 480 !important;
+  --dsw-font-xxs-strong-12-line-height: 17px !important;
+  --dsw-font-xxs-strong-12-font-size: 12px !important;
+  --dsw-font-xxs-strong-12-font-style: normal !important;
+  --dsw-font-xs-13: 360 13px/19px var(--dsw-font-family) !important;
+  --dsw-font-xs-13-font-family: var(--dsw-font-family) !important;
+  --dsw-font-xs-13-font-weight: 360 !important;
+  --dsw-font-xs-13-line-height: 19px !important;
+  --dsw-font-xs-13-font-size: 13px !important;
+  --dsw-font-xs-13-font-style: normal !important;
+  --dsw-font-xs-strong-13: 460 13px/19px var(--dsw-font-family) !important;
+  --dsw-font-xs-strong-13-font-family: var(--dsw-font-family) !important;
+  --dsw-font-xs-strong-13-font-weight: 460 !important;
+  --dsw-font-xs-strong-13-line-height: 19px !important;
+  --dsw-font-xs-strong-13-font-size: 13px !important;
+  --dsw-font-xs-strong-13-font-style: normal !important;
+  --dsw-font-s-14: 360 14px/20px var(--dsw-font-family) !important;
+  --dsw-font-s-14-font-family: var(--dsw-font-family) !important;
+  --dsw-font-s-14-font-weight: 360 !important;
+  --dsw-font-s-14-line-height: 20px !important;
+  --dsw-font-s-14-font-size: 14px !important;
+  --dsw-font-s-14-font-style: normal !important;
+  --dsw-font-s-strong-14: 540 14px/20px var(--dsw-font-family) !important;
+  --dsw-font-s-strong-14-font-family: var(--dsw-font-family) !important;
+  --dsw-font-s-strong-14-font-weight: 540 !important;
+  --dsw-font-s-strong-14-line-height: 20px !important;
+  --dsw-font-s-strong-14-font-size: 14px !important;
+  --dsw-font-s-strong-14-font-style: normal !important;
+  --dsw-font-base-16: 400 16px/24px var(--dsw-font-family) !important;
+  --dsw-font-base-16-font-family: var(--dsw-font-family) !important;
+  --dsw-font-base-16-font-weight: 400 !important;
+  --dsw-font-base-16-line-height: 24px !important;
+  --dsw-font-base-16-font-size: 16px !important;
+  --dsw-font-base-16-font-style: normal !important;
+  --dsw-font-base-strong-16: 460 16px/24px var(--dsw-font-family) !important;
+  --dsw-font-base-strong-16-font-family: var(--dsw-font-family) !important;
+  --dsw-font-base-strong-16-font-weight: 460 !important;
+  --dsw-font-base-strong-16-line-height: 24px !important;
+  --dsw-font-base-strong-16-font-size: 16px !important;
+  --dsw-font-base-strong-16-font-style: normal !important;
+  --dsw-font-m-18: 540 16px/24px var(--dsw-font-family) !important;
+  --dsw-font-m-18-font-family: var(--dsw-font-family) !important;
+  --dsw-font-m-18-font-weight: 540 !important;
+  --dsw-font-m-18-line-height: 24px !important;
+  --dsw-font-m-18-font-size: 16px !important;
+  --dsw-font-m-18-font-style: normal !important;
+  --dsw-font-l-20: 540 20px/25px var(--dsw-font-family) !important;
+  --dsw-font-l-20-font-family: var(--dsw-font-family) !important;
+  --dsw-font-l-20-font-weight: 540 !important;
+  --dsw-font-l-20-line-height: 25px !important;
+  --dsw-font-l-20-font-size: 20px !important;
+  --dsw-font-l-20-font-style: normal !important;
+  --dsw-font-xl-24: 540 24px/30px var(--dsw-font-family) !important;
+  --dsw-font-xl-24-font-family: var(--dsw-font-family) !important;
+  --dsw-font-xl-24-font-weight: 540 !important;
+  --dsw-font-xl-24-line-height: 30px !important;
+  --dsw-font-xl-24-font-size: 24px !important;
+  --dsw-font-xl-24-font-style: normal !important;
+}
+
+/* Message prose scale: scoped to the Conversation region, so the same
+   markdown tokens keep the shipped rhythm in document previews and
+   other reading surfaces outside a chat. */
+[data-conversation-region="chat"] {
+  --dsw-font-markdown-base: 400 var(--dsh-content-font-size,14px)/calc(var(--dsh-content-font-size,14px) * 1.73) var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-base-font-family: var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-base-font-weight: 400 !important;
+  --dsw-font-markdown-base-line-height: calc(var(--dsh-content-font-size,14px) * 1.73) !important;
+  --dsw-font-markdown-base-font-size: var(--dsh-content-font-size,14px) !important;
+  --dsw-font-markdown-base-font-style: normal !important;
+  --dsw-font-markdown-base-italic: italic 400 var(--dsh-content-font-size,14px)/calc(var(--dsh-content-font-size,14px) * 1.73) var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-base-italic-font-family: var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-base-italic-font-weight: 400 !important;
+  --dsw-font-markdown-base-italic-line-height: calc(var(--dsh-content-font-size,14px) * 1.73) !important;
+  --dsw-font-markdown-base-italic-font-size: var(--dsh-content-font-size,14px) !important;
+  --dsw-font-markdown-base-italic-font-style: italic !important;
+  --dsw-font-markdown-base-strong: 600 var(--dsh-content-font-size,14px)/calc(var(--dsh-content-font-size,14px) * 1.73) var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-base-strong-font-family: var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-base-strong-font-weight: 600 !important;
+  --dsw-font-markdown-base-strong-line-height: calc(var(--dsh-content-font-size,14px) * 1.73) !important;
+  --dsw-font-markdown-base-strong-font-size: var(--dsh-content-font-size,14px) !important;
+  --dsw-font-markdown-base-strong-font-style: normal !important;
+  --dsw-font-markdown-base-strong-italic: italic 600 var(--dsh-content-font-size,14px)/calc(var(--dsh-content-font-size,14px) * 1.73) var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-base-strong-italic-font-family: var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-base-strong-italic-font-weight: 600 !important;
+  --dsw-font-markdown-base-strong-italic-line-height: calc(var(--dsh-content-font-size,14px) * 1.73) !important;
+  --dsw-font-markdown-base-strong-italic-font-size: var(--dsh-content-font-size,14px) !important;
+  --dsw-font-markdown-base-strong-italic-font-style: italic !important;
+  --dsw-font-markdown-h1: 540 calc(20px + var(--dsh-content-font-delta))/calc(25px + var(--dsh-content-font-delta)) var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-h1-font-family: var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-h1-font-weight: 540 !important;
+  --dsw-font-markdown-h1-line-height: calc(25px + var(--dsh-content-font-delta)) !important;
+  --dsw-font-markdown-h1-font-size: calc(20px + var(--dsh-content-font-delta)) !important;
+  --dsw-font-markdown-h1-font-style: normal !important;
+  --dsw-font-markdown-h2: 540 calc(16px + var(--dsh-content-font-delta))/calc(22px + var(--dsh-content-font-delta)) var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-h2-font-family: var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-h2-font-weight: 540 !important;
+  --dsw-font-markdown-h2-line-height: calc(22px + var(--dsh-content-font-delta)) !important;
+  --dsw-font-markdown-h2-font-size: calc(16px + var(--dsh-content-font-delta)) !important;
+  --dsw-font-markdown-h2-font-style: normal !important;
+  --dsw-font-markdown-h3: 540 calc(15px + var(--dsh-content-font-delta))/calc(21px + var(--dsh-content-font-delta)) var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-h3-font-family: var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-h3-font-weight: 540 !important;
+  --dsw-font-markdown-h3-line-height: calc(21px + var(--dsh-content-font-delta)) !important;
+  --dsw-font-markdown-h3-font-size: calc(15px + var(--dsh-content-font-delta)) !important;
+  --dsw-font-markdown-h3-font-style: normal !important;
+  --dsw-font-markdown-h4: 540 var(--dsh-content-font-size,14px)/calc(var(--dsh-content-font-size,14px) * 1.73) var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-h4-font-family: var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-h4-font-weight: 540 !important;
+  --dsw-font-markdown-h4-line-height: calc(var(--dsh-content-font-size,14px) * 1.73) !important;
+  --dsw-font-markdown-h4-font-size: var(--dsh-content-font-size,14px) !important;
+  --dsw-font-markdown-h4-font-style: normal !important;
+  --dsw-font-markdown-table: 400 13px/20px var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-table-font-family: var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-table-font-weight: 400 !important;
+  --dsw-font-markdown-table-line-height: 20px !important;
+  --dsw-font-markdown-table-font-size: 13px !important;
+  --dsw-font-markdown-table-font-style: normal !important;
+  --dsw-font-markdown-table-head: 480 11px/16px var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-table-head-font-family: var(--dsh-font-family-prose) !important;
+  --dsw-font-markdown-table-head-font-weight: 480 !important;
+  --dsw-font-markdown-table-head-line-height: 16px !important;
+  --dsw-font-markdown-table-head-font-size: 11px !important;
+  --dsw-font-markdown-table-head-font-style: normal !important;
+  --dsw-font-markdown-small: 395 12px/17px var(--dsw-font-family) !important;
+  --dsw-font-markdown-small-font-family: var(--dsw-font-family) !important;
+  --dsw-font-markdown-small-font-weight: 395 !important;
+  --dsw-font-markdown-small-line-height: 17px !important;
+  --dsw-font-markdown-small-font-size: 12px !important;
+  --dsw-font-markdown-small-font-style: normal !important;
+  --dsw-font-markdown-small-italic: italic 395 12px/17px var(--dsw-font-family) !important;
+  --dsw-font-markdown-small-italic-font-family: var(--dsw-font-family) !important;
+  --dsw-font-markdown-small-italic-font-weight: 395 !important;
+  --dsw-font-markdown-small-italic-line-height: 17px !important;
+  --dsw-font-markdown-small-italic-font-size: 12px !important;
+  --dsw-font-markdown-small-italic-font-style: italic !important;
+  --dsw-font-markdown-small-strong: 480 12px/17px var(--dsw-font-family) !important;
+  --dsw-font-markdown-small-strong-font-family: var(--dsw-font-family) !important;
+  --dsw-font-markdown-small-strong-font-weight: 480 !important;
+  --dsw-font-markdown-small-strong-line-height: 17px !important;
+  --dsw-font-markdown-small-strong-font-size: 12px !important;
+  --dsw-font-markdown-small-strong-font-style: normal !important;
+  --dsw-font-markdown-small-strong-italic: italic 480 12px/17px var(--dsw-font-family) !important;
+  --dsw-font-markdown-small-strong-italic-font-family: var(--dsw-font-family) !important;
+  --dsw-font-markdown-small-strong-italic-font-weight: 480 !important;
+  --dsw-font-markdown-small-strong-italic-line-height: 17px !important;
+  --dsw-font-markdown-small-strong-italic-font-size: 12px !important;
+  --dsw-font-markdown-small-strong-italic-font-style: italic !important;
+  --dsw-font-markdown-code: 360 calc(12px + var(--dsh-code-font-delta))/calc(calc(12px + var(--dsh-code-font-delta)) * 1.5) var(--ds-font-family-code) !important;
+  --dsw-font-markdown-code-font-family: var(--ds-font-family-code) !important;
+  --dsw-font-markdown-code-font-weight: 360 !important;
+  --dsw-font-markdown-code-line-height: calc(calc(12px + var(--dsh-code-font-delta)) * 1.5) !important;
+  --dsw-font-markdown-code-font-size: calc(12px + var(--dsh-code-font-delta)) !important;
+  --dsw-font-markdown-code-font-style: normal !important;
+  --dsw-font-markdown-code-block: 360 var(--dsh-code-font-size,11px)/calc(var(--dsh-code-font-size,11px) * 1.5) var(--ds-font-family-code) !important;
+  --dsw-font-markdown-code-block-font-family: var(--ds-font-family-code) !important;
+  --dsw-font-markdown-code-block-font-weight: 360 !important;
+  --dsw-font-markdown-code-block-line-height: calc(var(--dsh-code-font-size,11px) * 1.5) !important;
+  --dsw-font-markdown-code-block-font-size: var(--dsh-code-font-size,11px) !important;
+  --dsw-font-markdown-code-block-font-style: normal !important;
+  --dsw-font-markdown-code-block-small: 360 var(--dsh-code-font-size,11px)/calc(var(--dsh-code-font-size,11px) * 1.45) var(--ds-font-family-code) !important;
+  --dsw-font-markdown-code-block-small-font-family: var(--ds-font-family-code) !important;
+  --dsw-font-markdown-code-block-small-font-weight: 360 !important;
+  --dsw-font-markdown-code-block-small-line-height: calc(var(--dsh-code-font-size,11px) * 1.45) !important;
+  --dsw-font-markdown-code-block-small-font-size: var(--dsh-code-font-size,11px) !important;
+  --dsw-font-markdown-code-block-small-font-style: normal !important;
+}
+

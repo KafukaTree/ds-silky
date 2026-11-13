@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+<title id="title">DS Silky — A smoother space to think.</title>
+<desc id="desc">DS Silky, a typography, card and streaming motion plugin for DeepSeek Harness.</desc>
+<rect width="1200" height="360" rx="24" fill="#F3F6FB"/>
+<g transform="translate(80 104)">
+<rect width="144" height="144" rx="34" fill="#14243B"/>
+<g transform="scale(1.125)" fill="none" stroke-width="12" stroke-linecap="round"><path d="M91 37C80 27 58 26 44 33C30 40 30 53 43 59C53 64 73 64 84 69C99 76 96 91 82 97C67 104 46 100 35 91" stroke="#F5F8FF"/><path d="M82 97C67 104 46 100 35 91" stroke="#A8B9FF"/></g>
+</g>
+<g font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fill="#14243B">
+<text x="270" y="174" font-size="64" font-weight="600" letter-spacing="-2">DS Silky</text>
+<text x="273" y="220" font-size="25" fill="#53647C">A smoother space to think.</text>
+<text x="80" y="314" font-size="15" fill="#64748B">Typography, thoughtful cards &amp; fluid motion for DeepSeek Harness</text>
+</g>
+<g fill="none" stroke="#CFD9ED" stroke-width="2" stroke-linecap="round"><path d="M895 80C1030 80 1070 130 1010 180S925 280 1120 280"/><path d="M919 80C1054 80 1094 130 1034 180S949 280 1144 280"/><path d="M943 80C1078 80 1118 130 1058 180S973 280 1168 280"/></g>
+</svg>

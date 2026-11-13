@@ -1,0 +1,97 @@
+/* ------------------------------------------------------------------
+   Part 4 — the right-sidebar document preview reads as a page.
+
+   No frame, no radius, no shadow: a 72ch column with 24/32 padding. Its
+   markdown is the primitives renderer, so the page scale is set through
+   the markdown tokens on the document root and inherited by the inner
+   .markdown node; element rules cover the pieces the tokens do not
+   reach (margins, table cells, code insets).
+------------------------------------------------------------------ */
+
+[data-document-markdown] {
+  --dsw-font-markdown-base: 360 13px/19px var(--dsw-font-family);
+  --dsw-font-markdown-base-strong: 540 13px/19px var(--dsw-font-family);
+  --dsw-font-markdown-base-italic: italic 360 13px/19px var(--dsw-font-family);
+  --dsw-font-markdown-base-strong-italic: italic 540 13px/19px var(--dsw-font-family);
+  --dsw-font-markdown-h1: 540 20px/25px var(--dsw-font-family);
+  --dsw-font-markdown-h2: 540 16px/22px var(--dsw-font-family);
+  --dsw-font-markdown-h3: 540 14px/20px var(--dsw-font-family);
+  --dsw-font-markdown-h4: 540 13px/19px var(--dsw-font-family);
+  --dsw-font-markdown-table: 360 12px/17px var(--dsw-font-family);
+  --dsw-font-markdown-table-head: 460 12px/17px var(--dsw-font-family);
+  --dsw-font-markdown-code: 360 12px/18px var(--ds-font-family-code);
+  --dsw-font-markdown-code-block: 360 12px/18px var(--ds-font-family-code);
+  --dsw-font-markdown-small: 395 11px/16px var(--dsw-font-family);
+  box-sizing: border-box;
+  padding: 24px 32px !important;
+  max-width: 72ch !important;
+  margin: 0 auto !important;
+  font-size: 13px !important;
+  line-height: 19px !important;
+  font-weight: 400 !important;
+}
+[data-document-markdown] :is(h1, h2, h3, h4) {
+  font-weight: 540 !important;
+  letter-spacing: 0 !important;
+}
+[data-document-markdown] h1 {
+  font-size: 20px !important;
+  line-height: 25px !important;
+}
+[data-document-markdown] h2 {
+  font-size: 16px !important;
+  line-height: 22px !important;
+  margin-top: 24px !important;
+}
+[data-document-markdown] h3 {
+  font-size: 14px !important;
+  line-height: 20px !important;
+  margin-top: 20px !important;
+}
+[data-document-markdown] :is(table, th, td) {
+  border-color: var(--dsw-alias-border-l2) !important;
+}
+[data-document-markdown] th {
+  font-size: 12px !important;
+  line-height: 17px !important;
+  font-weight: 460 !important;
+  background: var(--dsw-alias-bg-layer-1) !important;
+}
+[data-document-markdown] td {
+  font-size: 12px !important;
+  line-height: 17px !important;
+  padding: 6px 8px !important;
+}
+[data-document-markdown] pre {
+  border: 0 !important;
+  border-radius: var(--ds-card-radius-inner) !important;
+  background: var(--dsw-alias-markdown-code-block) !important;
+  padding: 10px 12px !important;
+  font-size: 12px !important;
+  line-height: 18px !important;
+}
+[data-document-markdown] :not(pre) > code {
+  font-size: 12px !important;
+  border-radius: 4px !important;
+  background: var(--dsw-alias-markdown-inline-code) !important;
+  padding: 0 4px !important;
+}
+/* The highlighter wraps every token in a span sized 0.93em, so inside a
+   12px block each token landed at 11.16 — below the 12px floor. Tokens
+   inherit the block's size. Only the tokens Shiki marks bold (inline
+   font-weight) are touched, and they top out at 600, not 700. */
+[data-document-markdown] pre span {
+  font-size: inherit !important;
+}
+[data-document-markdown] pre span[style*="font-weight:bold"],
+[data-document-markdown] pre span[style*="font-weight: bold"] {
+  font-weight: 600 !important;
+}
+[data-document-markdown] a {
+  color: var(--dsw-alias-state-business-primary) !important;
+  text-decoration: none !important;
+}
+[data-document-markdown] a:hover {
+  text-decoration: underline !important;
+}
+

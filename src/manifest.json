@@ -1,0 +1,28 @@
+{
+  "beforeStyles": [
+    "src/fonts.js",
+    "src/constants.js"
+  ],
+  "styles": [
+    "src/styles/tokens.css",
+    "src/styles/conversation.css",
+    "src/styles/shell.css",
+    "src/styles/tool-cards.css",
+    "src/styles/questions.css",
+    "src/styles/documents.css",
+    "src/styles/controls.css",
+    "src/styles/font-picker.css",
+    "src/styles/settings.css",
+    "src/styles/stream-fade.css"
+  ],
+  "afterStyles": [
+    "src/font-picker.js",
+    "src/feedback.js",
+    "src/lifecycle.js",
+    "src/highlight.js",
+    "src/resize.js",
+    "src/has-freeze.js",
+    "src/scroll-cull.js",
+    "src/stream-fade.js"
+  ]
+}

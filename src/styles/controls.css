@@ -1,0 +1,97 @@
+/* ------------------------------------------------------------------
+   Part 5 — the remaining hardcoded chrome roles (handoff E).
+
+   Exact class-token selectors ([class~=]) because these families share
+   prefixes (kiGsTW_crumb also prefixes crumbSeg / crumbSep /
+   crumbSubagent / crumbCurrent) and a substring match would restyle the
+   breadcrumb separators too.
+------------------------------------------------------------------ */
+
+@host(chatNavigation.crumb.exact) {
+  font-size: 14px !important;
+  line-height: 20px !important;
+  font-weight: 540 !important;
+}
+@host(chatNavigation.crumbSubagent.exact) {
+  font-size: 12px !important;
+  line-height: 17px !important;
+  font-weight: 395 !important;
+}
+@host(compactTrigger.trigger.exact) {
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  line-height: 17px !important;
+  font-weight: 460 !important;
+}
+@host(menuTrigger.trigger.exact) {
+  border-radius: 4px !important;
+  font-size: 13px !important;
+  line-height: 19px !important;
+  font-weight: 460 !important;
+}
+@host(selectTrigger.trigger.exact) {
+  border-radius: 4px !important;
+  font-size: 13px !important;
+  line-height: 19px !important;
+  font-weight: 460 !important;
+}
+
+/* ------------------------------------------------------------------
+   Part 6 — chat tables (handoff H4).
+
+   A table is a ruler, not a grid: 11px letter-spaced header over 13px
+   body, one hairline under every row, no outer frame, no zebra, no
+   vertical rules.
+------------------------------------------------------------------ */
+
+[data-conversation-region="chat"] table {
+  border-collapse: collapse !important;
+  font-size: 13px !important;
+  line-height: 20px !important;
+}
+[data-conversation-region="chat"] th {
+  font-size: 11px !important;
+  line-height: 16px !important;
+  font-weight: 480 !important;
+  letter-spacing: .08em !important;
+  color: var(--dsw-alias-label-tertiary) !important;
+  padding: 8px 0 !important;
+  border: 0 !important;
+  border-bottom: .5px solid var(--dsw-alias-border-l2) !important;
+  text-align: left !important;
+}
+[data-conversation-region="chat"] td {
+  font-size: 13px !important;
+  line-height: 20px !important;
+  padding: 8px 0 !important;
+  border: 0 !important;
+  border-bottom: .5px solid var(--dsw-alias-border-l2) !important;
+}
+
+/* ------------------------------------------------------------------
+   Part 7 — composer (handoff H5, stable hook confirmed: the host sets
+   data-composer-card on the input card). The send-button half of H5 has
+   no stable hook in this build and is deliberately left out.
+------------------------------------------------------------------ */
+
+[data-composer-card] {
+  border-radius: 18px !important;
+  border: .5px solid var(--dsw-alias-border-l2) !important;
+  box-shadow: 0 1px 2px rgba(31, 41, 55, .05), 0 2px 10px rgba(31, 41, 55, .03) !important;
+}
+body[data-ds-dark-theme] [data-composer-card] {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 2px 10px rgba(0, 0, 0, .2) !important;
+}
+/* Tabbing into the composer used to change nothing on the card — the
+   only cue was the caret inside a 36px-tall empty box. One border step
+   deeper (l2 -> l4) says "this is where you type" without spending the
+   blue ring on a field this large. */
+[data-composer-card]:focus-within {
+  border-color: var(--dsw-alias-border-l4) !important;
+}
+/* The scroll-to-bottom chip is the same 34px circle as the send button
+   but the host rounds it with 100px. Same shape, one token. */
+@host(scrollBottom.toBottom.exact) {
+  border-radius: 999px !important;
+}
+
