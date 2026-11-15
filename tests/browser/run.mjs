@@ -480,6 +480,130 @@ await run(`window.__withIsolatedFixture = async (callback, html) => {
     finally { frame.remove(); }
   }
 }`);
+await test('a blank session still animates its first newly generated process chain', async () => {
+  const r=await run(`return __withIsolatedFixture(async w=>{
+    const d=w.document,flush=()=>new Promise(r=>w.queueMicrotask(()=>w.queueMicrotask(r)));
+    const host=d.createElement('main');host.dataset.conversationRegion='chat';host.dataset.conversationSession='new-blank-session';host.dataset.contentPhase='hero';host.innerHTML='<div data-slot="conversation.chat.flow"></div>';d.body.append(host);await flush();
+    host.dataset.contentPhase='active';host.firstChild.innerHTML='<section data-chat-flow-key="new-thinking"><div data-variant="think" data-state="running" data-expanded="true"><div data-disclosure-header>思考</div><p>这是新请求产生的思考</p></div></section>';await flush();
+    const levels=[...w.CSS.highlights].filter(([name])=>name.startsWith('daf-fade-')).flatMap(([name,h])=>[...h].filter(r=>host.contains(r.startContainer)).map(()=>Number(name.slice(9))));
+    return {levels,status:w.__dshAnthropicFonts.streamFadeStatus()};
+  })`);
+  assert.ok(r.levels.includes(0),'first new thought must retain its streaming fade');
+});
+
+await test('history loading spans multiple commits and ends before fresh output', async () => {
+  const r=await run(`return __withIsolatedFixture(async w=>{
+    const d=w.document,flush=()=>new Promise(r=>w.queueMicrotask(()=>w.queueMicrotask(r)));
+    const host=d.createElement('main');host.dataset.conversationRegion='chat';host.dataset.conversationSession='batched-history';
+    host.innerHTML='<div data-chat-flow><div class="fixture_hint">Loading history…</div><div data-slot="conversation.chat.flow"></div></div>';d.body.append(host);await flush();
+    const column=host.firstChild,flow=column.lastChild, samples=[];
+    function sample(){return {pending:w.__dshAnthropicFonts.streamFadeStatus().rowsPending,effects:[...flow.querySelectorAll('*')].flatMap(e=>e.getAnimations()).length,dim:[...w.CSS.highlights].filter(([name])=>name.startsWith('daf-fade-')&&Number(name.slice(9))<15).some(([,h])=>[...h].some(r=>flow.contains(r.startContainer)))}}
+    for(let i=0;i<3;i++){
+      flow.insertAdjacentHTML('beforeend','<section data-chat-flow-key="batch-'+i+'"><div data-variant="think" data-state="running"><div data-disclosure-header>思考 · <span data-streaming="true">历史思考摘要</span></div></div><div data-variant="read" data-state="ok"><div data-disclosure-header>历史工具</div></div><div data-streaming="true"><p>历史正文</p></div></section>');
+      if(i===2)column.firstChild.remove();
+      await flush();samples.push(sample());await new Promise(w.requestAnimationFrame);
+    }
+    flow.lastChild.querySelector('p').firstChild.appendData('新追加正文');await flush();const fresh=sample();
+    const hint=d.createElement('div');hint.className='fixture_hint';column.prepend(hint);await flush();
+    flow.lastChild.querySelector('p').firstChild.appendData('重新同步历史');await flush();samples.push(sample());
+    hint.remove();await flush();flow.lastChild.querySelector('p').firstChild.appendData('加载结束后新增');await flush();
+    return {samples,fresh,after:sample()};
+  })`);
+  for(const s of r.samples){assert.equal(s.pending,0);assert.equal(s.effects,0);assert.equal(s.dim,false)}
+  assert.equal(r.fresh.dim,true,'new output after the final history commit must fade');
+  assert.equal(r.after.dim,true,'loader-only removal must close hydration');
+});
+
+await test('first session history mount never replays reasoning and completed tool rows', async () => {
+  const r=await run(`return __withIsolatedFixture(async w=>{
+    const d=w.document,flush=()=>new Promise(r=>w.queueMicrotask(()=>w.queueMicrotask(r)));
+    const host=d.createElement('main');host.dataset.conversationRegion='chat';host.dataset.conversationSession='first-unseen-history';host.dataset.contentPhase='active';
+    host.innerHTML='<div data-slot="conversation.chat.flow"></div>';d.body.append(host);await flush();await new Promise(w.requestAnimationFrame);
+    const flow=host.firstChild, before=w.__dshAnthropicFonts.streamFadeStatus();
+    flow.innerHTML='<section data-chat-flow-key="past-think"><div data-variant="think" data-state="ok"><div data-disclosure-header>思考 · 之前的思考摘要</div></div></section>'+Array.from({length:12},(_,i)=>'<section data-chat-flow-key="past-tool-'+i+'"><div data-variant="read" data-state="ok"><div data-disclosure-header>读取图片 · /tmp/c'+i+'.png</div></div></section>').join('')+'<section data-chat-flow-key="current-think"><div data-variant="think" data-state="running" data-expanded="true"><div data-disclosure-header>思考</div><p>已经存在的思考正文</p></div></section><section data-chat-flow-key="current-body"><div data-streaming="true"><p>已经存在的正文</p></div></section>';
+    await flush();
+    const glyphs=()=>[...w.CSS.highlights].filter(([name])=>name.startsWith('daf-fade-')).flatMap(([name,h])=>[...h].filter(r=>flow.contains(r.startContainer)).map(r=>({level:Number(name.slice(9)),text:r.toString()})));
+    const initial={status:w.__dshAnthropicFonts.streamFadeStatus(),glyphs:glyphs(),effects:[...flow.querySelectorAll('*')].flatMap(e=>e.getAnimations()).length};
+    const text=flow.querySelector('[data-expanded] p').firstChild;text.appendData('真正新增的思考');await flush();const freshGlyphs=glyphs();
+    flow.insertAdjacentHTML('beforeend','<section data-chat-flow-key="new-tool"><div data-variant="read" data-state="running"><div data-disclosure-header>新的工具调用</div></div></section>');await flush();
+    return {before,initial,freshGlyphs,after:w.__dshAnthropicFonts.streamFadeStatus()};
+  })`);
+  assert.equal(r.initial.status.rowsSeen,r.before.rowsSeen,'historical rows must not enter again');
+  assert.equal(r.initial.status.rowsPending,0,'history must not be held in a replay queue');
+  assert.equal(r.initial.effects,0,'history must have no fade/entry effects');
+  assert.ok(r.initial.glyphs.every(x=>x.level===15),'existing thinking/body must be fully visible');
+  assert.ok(r.freshGlyphs.some(x=>x.level===0&&x.text.includes('真')),'new thinking must still fade');
+  assert.ok(r.after.rowsPending>0,'new tool must still wait for pending thinking');
+});
+
+await test('returning to a session hydrates a previously seen live body mounted after its empty scope', async () => {
+  const r=await run(`return __withIsolatedFixture(async w=>{
+    const d=w.document,flush=()=>new Promise(r=>w.queueMicrotask(()=>w.queueMicrotask(r)));
+    const main=d.createElement('main');main.dataset.conversationRegion='chat';main.dataset.conversationSession='session-a';
+    main.innerHTML='<div data-slot="conversation.chat.flow"><section data-chat-flow-key="same-turn"><div data-streaming="true"><p>已读正文</p></div></section></div>';
+    d.body.append(main);await flush();main.remove();await flush();await new Promise(w.requestAnimationFrame);
+    const back=d.createElement('main');back.dataset.conversationRegion='chat';back.dataset.conversationSession='session-a';back.innerHTML='<div data-slot="conversation.chat.flow"></div>';d.body.append(back);await flush();
+    const flow=back.firstChild;flow.innerHTML='<section data-chat-flow-key="same-turn"><div data-streaming="true"><p>已读正文和离开期间恢复的内容</p></div></section>';await flush();
+    function levels(el){const n=el.firstChild,a=Array(n.length).fill(15);for(const [name,h]of w.CSS.highlights)if(name.startsWith('daf-fade-'))for(const r of h)if(r.startContainer===n)for(let i=r.startOffset;i<r.endOffset;i++)a[i]=Number(name.slice(9));return a}
+    const p=flow.querySelector('p'),restored=levels(p);p.firstChild.appendData('新到达');await flush();const append=levels(p).slice(-3);
+    flow.insertAdjacentHTML('beforeend','<section data-chat-flow-key="fresh-turn"><div data-streaming="true"><p>新一轮正文</p></div></section>');await flush();const fresh=levels(flow.lastChild.querySelector('p'));
+    flow.innerHTML='';await flush();await new Promise(w.requestAnimationFrame);
+    flow.innerHTML='<section data-chat-flow-key="same-turn"><div data-streaming="true"><p>重试后完全不同的正文</p></div></section>';await flush();const retry=levels(flow.querySelector('p'));
+    flow.innerHTML='';back.dataset.conversationSession='session-b';await flush();
+    flow.innerHTML='<section data-chat-flow-key="new-user" data-chat-flow-kind="user">新请求</section>';await flush();
+    flow.innerHTML='<section data-chat-flow-key="same-turn"><div data-streaming="true"><p>另一个会话的新正文</p></div></section>';await flush();const other=levels(flow.querySelector('p'));
+    return {restored,append,fresh,retry,other};
+  })`);
+  assert.ok(r.restored.every(x=>x===15),'returning history must not start streaming from zero');
+  for(const key of ['append','fresh','retry','other'])assert.ok(r[key].every(x=>x===0),key+': new output must still be queued');
+});
+
+await test('final local file link conversion retains the response while the final tail fades', async () => {
+  const fixture = JSON.parse(await readFile(new URL('./host-completion-snapshots.json', import.meta.url), 'utf8'));
+  for (const item of fixture.cases) for (const phase of ['settled', 'partial']) {
+    const result = await run(`return __withIsolatedFixture(async w => {
+      const d=w.document, item=${JSON.stringify(item)}, phase=${JSON.stringify(phase)};
+      const flush=()=>new Promise(r=>w.queueMicrotask(()=>w.queueMicrotask(r)));
+      const scope=d.createElement('main');scope.dataset.conversationRegion='chat';
+      scope.innerHTML='<section data-chat-flow-key="completion"><div data-streaming="true"></div></section>';
+      d.body.append(scope);await flush();const root=scope.querySelector('[data-streaming]');
+      if(phase==='settled')w.__dshAnthropicFonts.setStreamFadeEnabled(false);
+      root.innerHTML=item.before;await flush();
+      if(phase==='settled'){w.__dshAnthropicFonts.setStreamFadeEnabled(true);await flush()}
+      function read(){
+        const walker=d.createTreeWalker(root,w.NodeFilter.SHOW_TEXT);let n,text='',levels=[];
+        while(n=walker.nextNode()){
+          if(n.parentElement.closest('button,pre,svg,[aria-hidden="true"]'))continue;
+          const a=Array(n.length).fill(15);
+          for(const [name,h] of w.CSS.highlights){if(!name.startsWith('daf-fade-'))continue;for(const r of h)if(r.startContainer===n)for(let i=r.startOffset;i<r.endOffset;i++)a[i]=Number(name.slice(9))}
+          text+=n.data;levels.push(...a);
+        }return {text,levels};
+      }
+      if(phase==='partial'){
+        const until=w.performance.now()+4000;
+        while(w.performance.now()<until){const r=read();if(r.levels[50]>0&&r.levels[50]<15&&r.levels.at(-1)===0)break;await new Promise(w.requestAnimationFrame)}
+      }
+      const before=read();root.innerHTML=item.after;root.removeAttribute('data-streaming');await flush();
+      const after=read(),frames=[after];
+      const until=w.performance.now()+5000;
+      while(w.performance.now()<until&&frames.at(-1).levels.some(x=>x<15)){await new Promise(w.requestAnimationFrame);frames.push(read())}
+      return {before,after,frames};
+    })`);
+    assert.equal(result.before.text,item.beforeText);
+    assert.equal(result.after.text,item.afterText);
+    const removed='π0.7 模型结构：多模态上下文 → 50 步动作块';
+    const at=item.beforeText.indexOf(removed);
+    assert.equal(at,7);
+    const retained=result.before.levels.filter((_,i)=>i<at||i>=at+removed.length);
+    assert.ok(result.after.levels.slice(0,retained.length).every((x,i)=>x>=retained[i]),item.id+' '+phase+': retained text replayed');
+    assert.ok(result.after.levels.slice(0,retained.length).every((x,i)=>retained[i]!==0||x<15),'queued text must not flash fully visible');
+    if(phase==='partial')assert.ok(retained.some(x=>x>0&&x<15)&&retained.includes(0),'must observe real partial and queued text');
+    if(item.id!=='full-control')assert.ok(result.after.levels.slice(retained.length).every(x=>x===0),'final tail must start queued');
+    for(let f=1;f<result.frames.length;f++)assert.ok(result.frames[f].levels.every((x,i)=>x>=result.frames[f-1].levels[i]),'brightness must never go backwards');
+    assert.ok(result.frames.at(-1).levels.every(x=>x===15),'final queue must drain');
+  }
+});
+
 await test('fresh body text cannot overtake thinking or a held tool', async () => {
   for (const mode of ['body','tool-body','final-body','large-body','body-card','code-only']) {
     const result = await run(`return __withIsolatedFixture(async w => {

@@ -199,6 +199,43 @@ test('settled text stays fully bright across append and DOM replacement', () => 
   assert.equal(c.levelAt(6), 0)
 })
 
+test('final link conversion plus appended tail never replays retained prose', () => {
+  const c = painter()
+  const prefix = '结构图已完成：'
+  const label = 'π0.7 模型结构：多模态上下文 → 50 步动作块'
+  const prose = '图里梳理了五条上下文通路。主干负责语义理解。方便对着代码算显存'
+  c.commit(prefix + label + prose)
+  Object.assign(c.state, { rate: 4, arrivalRate: 4 })
+  for (let i = 0; i < 80; i++) c.tick(16)
+  c.commit(prefix + prose + '。', true)
+  assert.ok(Array.from({ length: prefix.length + prose.length }, (_, i) => c.levelAt(i)).every(v => v === 15),
+    'completed text must stay fully visible when a file link leaves the glyph snapshot')
+  assert.equal(c.levelAt(prefix.length + prose.length), 0, 'only the final new punctuation is queued')
+})
+
+test('interior retained text keeps partial and queued progress across Markdown edits', () => {
+  const c = painter()
+  c.commit('说明：**粗体文字还有等待的后文')
+  Object.assign(c.state, { rate: 0.01, arrivalRate: 0.01 })
+  for (let i = 0; i < 200 && !(c.levelAt(5) > 0 && c.levelAt(5) < 15); i++) c.tick(16)
+  assert.ok(c.levelAt(5) > 0 && c.levelAt(5) < 15)
+  assert.equal(c.levelAt(15), 0)
+  const before = Array.from({ length: 11 }, (_, i) => c.levelAt(i + 5))
+  c.commit('说明：粗体文字还有等待的后文。', true)
+  assert.deepEqual(Array.from({ length: 11 }, (_, i) => c.levelAt(i + 3)), before)
+  assert.equal(c.levelAt(c.state.text.length - 1), 0)
+})
+
+test('large final appends do not consume the retained-text alignment budget', () => {
+  const c = painter(), prose = '已经显示的正文。'.repeat(200)
+  c.commit('开头：[文件标签]' + prose)
+  Object.assign(c.state, { rate: 4, arrivalRate: 4 })
+  for (let i = 0; i < 300; i++) c.tick(16)
+  c.commit('开头：' + prose + '新的尾部'.repeat(500), true)
+  assert.ok(Array.from({ length: 3 + prose.length }, (_, i) => c.levelAt(i)).every(v => v === 15))
+  assert.equal(c.levelAt(3 + prose.length), 0)
+})
+
 test('a tail insertion releases its changed middle before the retained queued suffix', () => {
   const c = controller()
   c.append('abcdef')

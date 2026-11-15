@@ -1,0 +1,28 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>DS Silky · 完成与会话恢复回放</title>
+<style>
+body{max-width:900px;margin:32px auto;padding:0 24px;background:#fff;color:#252830;font:16px/1.75 system-ui}nav{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid #ddd;padding-bottom:16px}button{font:inherit;padding:6px 12px;border:1px solid #d8dce3;border-radius:8px;background:#f7f8fa;color:inherit;cursor:pointer}#status{font-size:14px;color:#505868}main{margin-top:24px}p{margin:18px 0}svg{width:14px;height:14px}strong{font-weight:600}
+</style>
+<nav><button id="finish">回放结束提交</button><button id="restore">回放切回会话</button><button id="history">回放首次加载过程链</button><span id="status">载入真实解析快照…</span></nav>
+<main data-conversation-region="chat" data-conversation-session="pi07-demo"><div data-slot="conversation.chat.flow"></div></main>
+<script>
+window.__disposers=[];window.__ModuleLoader__={load(module){module.factory(()=>{throw Error('No terminal bridge in fixture')}).apply({effect(callback){__disposers.push(callback())}})}};
+</script>
+<script src="../../lib/client.js"></script>
+<script type="module">
+const snapshots=await fetch('./host-completion-snapshots.json').then(r=>r.json());
+const sample=snapshots.cases.find(c=>c.id==='missing-last-three');
+const status=document.querySelector('#status');
+const flush=()=>new Promise(r=>queueMicrotask(()=>queueMicrotask(r)));
+const api=window.__dshAnthropicFonts;
+let busy=false;
+function mount(html){const flow=document.querySelector('[data-slot]');flow.innerHTML='<section data-chat-flow-key="pi07"><div data-streaming="true"></div></section>';const root=flow.firstChild.firstChild;root.innerHTML=html;return root}
+function levels(root){const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n,result=[];while(n=walker.nextNode()){if(n.parentElement.closest('button,svg,pre,[aria-hidden="true"]'))continue;const a=Array(n.length).fill(15);for(const[name,h]of CSS.highlights)if(name.startsWith('daf-fade-'))for(const r of h)if(r.startContainer===n)for(let i=r.startOffset;i<r.endOffset;i++)a[i]=Number(name.slice(9));result.push(...a)}return result}
+async function prepare(){api.setStreamFadeEnabled(false);const root=mount(sample.before);await flush();api.setStreamFadeEnabled(true);await flush();return root}
+async function replayFinish(){if(busy)return;busy=true;try{const root=await prepare();await new Promise(requestAnimationFrame);root.innerHTML=sample.after;root.removeAttribute('data-streaming');await flush();let min=15,frames=0;const start=performance.now();do{const a=levels(root);min=Math.min(min,...a.slice(0,sample.afterText.length-3));frames++;if(a.every(x=>x===15))break;await new Promise(requestAnimationFrame)}while(performance.now()-start<5000);status.textContent=`结束提交：旧正文最低亮度 ${min}/15，采样 ${frames} 帧；末尾显存。正常收尾。`;window.replayResult={kind:'finish',min,frames,drained:levels(root).every(x=>x===15)}}finally{busy=false}}
+async function replayRestore(){if(busy)return;busy=true;try{await prepare();const previous=document.querySelector('main');previous.remove();await flush();await new Promise(requestAnimationFrame);const main=document.createElement('main');main.dataset.conversationRegion='chat';main.dataset.conversationSession='pi07-demo';main.innerHTML='<div data-slot="conversation.chat.flow"></div>';document.body.append(main);await flush();await new Promise(requestAnimationFrame);const root=mount(sample.before);await flush();const min=Math.min(...levels(root));status.textContent=`切回会话：延后挂载正文最低亮度 ${min}/15。`;window.replayResult={kind:'restore',min}}finally{busy=false}}
+async function replayHistory(){if(busy)return;busy=true;try{document.querySelector('main').remove();await flush();const main=document.createElement('main');main.dataset.conversationRegion='chat';main.dataset.conversationSession='unseen-history-'+performance.now();main.dataset.contentPhase='active';main.innerHTML='<div data-slot="conversation.chat.flow"></div>';document.body.append(main);await flush();await new Promise(requestAnimationFrame);main.firstChild.innerHTML='<section data-chat-flow-key="thinking"><div data-variant="think" data-state="ok"><div data-disclosure-header>思考 · Now I can see:</div></div></section>'+['运行命令 · Crop camera and execution panels','上下文注入 · time-context','读取图片 · /tmp/c1.png','读取图片 · /tmp/c2.png','运行命令 · Tune wrist zoom and execution panel'].map((text,i)=>'<section data-chat-flow-key="tool-'+i+'"><div data-variant="read" data-state="ok"><div data-disclosure-header>'+text+'</div></div></section>').join('')+'<section data-chat-flow-key="live"><div data-variant="think" data-state="running"><div data-disclosure-header>思考 · <span data-streaming="true">已经恢复的思考摘要</span></div></div></section>';await flush();const s=api.streamFadeStatus(),min=Math.min(...levels(main)),effects=[...main.querySelectorAll('*')].flatMap(e=>e.getAnimations()).length;status.textContent=`首次历史过程链：最低亮度 ${min}/15，等待行 ${s.rowsPending}，动画 ${effects}。`;window.replayResult={kind:'history',min,pending:s.rowsPending,effects}}finally{busy=false}}
+document.querySelector('#finish').onclick=replayFinish;document.querySelector('#restore').onclick=replayRestore;document.querySelector('#history').onclick=replayHistory;
+await prepare();status.textContent='已就绪：使用宿主解析快照，非真实模型会话。';
+</script>

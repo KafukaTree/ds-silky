@@ -35,6 +35,10 @@ let sfMedia = null
 let sfSelectFrame = 0
 let sfLocation = ''
 let sfScopes = new Map()
+// Bounded identities/fingerprints, never DOM or response text. Late session
+// hydration can mount into an already-seeded empty chat scope.
+const sfKnownBodies = new Map()
+let sfViews = new Map()
 let sfClocks = new Map()
 let sfDirty = new Set()
 let sfActive = new Set()
@@ -191,14 +195,54 @@ function sfSnapshot(source, previous) {
   return { text: parts.join(''), nodes, blockStarts, replaced, replacedFrom }
 }
 
+/* A view can mount empty before its history arrives. Hydrate the entire first
+   population, including completed tool rows and reasoning, not just bodies we
+   happened to see before navigation. Keep it open across loading commits;
+   close only after reading the commit that removes the history hint. */
+function sfBeginViews() {
+  for (const view of sfViews.keys()) if (!view.isConnected) sfViews.delete(view)
+  for (const view of document.querySelectorAll('[data-conversation-region="chat"][data-conversation-session]')) {
+    const session = view.getAttribute('data-conversation-session')
+    let entry = sfViews.get(view)
+    if (!entry || entry.session !== session) {
+      entry = { session, hydrating: true }
+      sfViews.set(view, entry)
+    }
+    const column = view.querySelector('[data-chat-flow]')
+    entry.loading = column !== null && [...column.children].some(child =>
+      [...child.classList].some(name => name.endsWith('@host(chatView.historyHint.fragment)')))
+    if (entry.loading) entry.hydrating = true
+    else if (view.getAttribute('data-content-phase') === 'hero') entry.hydrating = false
+  }
+}
+
+function sfEndViews() {
+  for (const [view, entry] of sfViews) {
+    if (entry.hydrating && !entry.loading && view.querySelector(SF_SEAT)) entry.hydrating = false
+  }
+}
+
+function sfTextStamp(text, length = text.length) {
+  let hash = 2166136261
+  for (let i = 0; i < length; i += 1) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619)
+  return hash >>> 0
+}
+
 function sfReadSeat(seat, baseline = false) {
   if (!seat.isConnected || seat.closest(SF_SKIP) !== null) return
   const scope = sfScopeOf(seat)
   if (scope === null) return
+  baseline ||= sfViews.get(scope.closest('[data-conversation-session]'))?.hydrating === true
   sfProcessRows(seat, scope, baseline)
   const key = seat.getAttribute('data-chat-flow-key')
+  const session = scope.closest('[data-conversation-session]')?.getAttribute('data-conversation-session')
   let groups = sfScopes.get(scope)
   let group = groups === undefined ? undefined : groups.get(key)
+  if (group && group.session !== session) {
+    for (const state of group.sources.values()) sfDrop(state)
+    groups.delete(key)
+    group = undefined
+  }
   if (group === undefined) {
     // Settled history carries no streamed text; tracking it would only add
     // a full snapshot per seat on install and on every conversation switch.
@@ -207,16 +251,29 @@ function sfReadSeat(seat, baseline = false) {
       groups = new Map()
       sfScopes.set(scope, groups)
     }
-    group = { seat, sources: new Map() }
+    group = { seat, session, sources: new Map() }
     groups.set(key, group)
   }
   group.seat = seat
+  if (baseline) {
+    for (const state of group.sources.values()) sfDrop(state)
+    group.sources.clear()
+  }
   const sources = sfSources(seat, group.sources)
   const found = new Set()
   for (const source of sources) {
     found.add(source.key)
     let state = group.sources.get(source.key)
     const snapshot = sfSnapshot(source, state === undefined ? undefined : state.nodes)
+    const historyKey = session && source.kind === 'body' ? JSON.stringify([session, key, source.key]) : null
+    const known = historyKey === null ? undefined : sfKnownBodies.get(historyKey)
+    const restored = state === undefined && known && snapshot.text.length >= known.length &&
+      sfTextStamp(snapshot.text, known.length) === known.hash
+    if (historyKey !== null && (!state || state.text !== snapshot.text)) {
+      sfKnownBodies.delete(historyKey)
+      if (snapshot.text.length) sfKnownBodies.set(historyKey, { length: snapshot.text.length, hash: sfTextStamp(snapshot.text) })
+      if (sfKnownBodies.size > 512) sfKnownBodies.delete(sfKnownBodies.keys().next().value)
+    }
     if (state === undefined) {
       // Switching the disclosure view exposes existing reasoning, not new
       // generation. Its header/body gesture animation already owns that reveal.
@@ -224,7 +281,7 @@ function sfReadSeat(seat, baseline = false) {
         key.startsWith(source.key.split(':').slice(0, 2).join(':') + ':'))
       const disclosure = source.root.closest('[data-variant="think"]')
       const gesture = disclosure !== null && (sfDisclosureViews.has(disclosure) || sfDisclosures.has(disclosure))
-      const hydrated = baseline || (counterpart && gesture)
+      const hydrated = baseline || restored || (counterpart && gesture)
       if (counterpart && gesture) sfDisclosureViews.delete(disclosure)
       state = {
         ...source, ...snapshot, spans: [], paints: [],
@@ -423,9 +480,14 @@ function sfProcessRows(seat, scope, baseline) {
     sfRows.set(scope, groups)
   }
   const key = seat.getAttribute('data-chat-flow-key')
+  const session = scope.closest('[data-conversation-session]')?.getAttribute('data-conversation-session')
   let group = groups.get(key)
+  if (group && group.session !== session) {
+    for (const entry of group.pending.values()) sfReleaseRow(entry)
+    group = undefined
+  }
   if (group === undefined) {
-    group = { seat, seen: new Set(), pending: new Map() }
+    group = { seat, session, seen: new Set(), pending: new Map() }
     groups.set(key, group)
   }
   group.seat = seat
@@ -438,6 +500,12 @@ function sfProcessRows(seat, scope, baseline) {
     const signature = row.getAttribute('data-variant') + ':' + (row.getAttribute('data-tool') || '') + ':' + index++
     found.add(signature)
     const pending = group.pending.get(signature)
+    if (baseline) {
+      if (pending) sfReleaseRow(pending)
+      sfRowAnimations.get(row.querySelector('[data-disclosure-header]') || row)?.cancel()
+      group.seen.add(signature)
+      continue
+    }
     if (pending !== undefined) {
       if (pending.row !== row) {
         pending.hold.cancel()
@@ -885,6 +953,50 @@ function sfDrive(state, now) {
   }
 }
 
+/* Bounded Myers alignment for the changed middle only. Markdown can remove
+   syntax near the start and append a tail in the same commit. Prefix/suffix
+   alone would replay the surviving prose. Ordinary appends never enter here;
+   unrelated large replacements fall back to the conservative old behavior. */
+function sfRetainedMiddle(a, b, offset) {
+  if (!a.length || !b.length) return []
+  let work = 0
+  const trace = []
+  let frontier = new Map([[1, 0]])
+  for (let distance = 0; distance <= Math.min(128, a.length + b.length); distance += 1) {
+    trace.push(frontier)
+    const next = new Map()
+    for (let diagonal = -distance; diagonal <= distance; diagonal += 2) {
+      if (++work > 65536) return null
+      const down = diagonal === -distance || (diagonal !== distance &&
+        (frontier.get(diagonal - 1) ?? -1) < (frontier.get(diagonal + 1) ?? -1))
+      let x = down ? (frontier.get(diagonal + 1) ?? 0) : (frontier.get(diagonal - 1) ?? 0) + 1
+      let y = x - diagonal
+      while (x < a.length && y < b.length && a[x] === b[y]) {
+        if (++work > 65536) return null
+        x += 1; y += 1
+      }
+      next.set(diagonal, x)
+      // Once either side is consumed, the remainder is a plain append/delete.
+      // A large final batch must not exhaust the edit budget just by arriving.
+      if (x < a.length && y < b.length) continue
+      const runs = []
+      for (let d = distance; d >= 0; d -= 1) {
+        const v = trace[d], k = x - y
+        const previousK = k === -d || (k !== d && (v.get(k - 1) ?? -1) < (v.get(k + 1) ?? -1)) ? k + 1 : k - 1
+        const previousX = v.get(previousK) ?? 0
+        const previousY = previousX - previousK
+        const endX = x, endY = y
+        while (x > previousX && y > previousY) { x -= 1; y -= 1 }
+        if (endX > x) runs.push({ oldStart: offset + x, start: offset + y, end: offset + endY })
+        x = previousX; y = previousY
+      }
+      return runs.reverse()
+    }
+    frontier = next
+  }
+  return null
+}
+
 function sfUpdate(state, source, snapshot, animate) {
   const oldText = state.text
   const oldProvisional = state.provisionalRanges || []
@@ -892,31 +1004,39 @@ function sfUpdate(state, source, snapshot, animate) {
   let prefix = 0
   while (prefix < oldText.length && prefix < newText.length && oldText[prefix] === newText[prefix]) prefix += 1
   let suffix = 0
+  const gaps = []
   if (oldText !== newText) {
     while (suffix < oldText.length - prefix && suffix < newText.length - prefix &&
            oldText[oldText.length - suffix - 1] === newText[newText.length - suffix - 1]) suffix += 1
+    // Include the suffix in alignment: the final full stop of a new paragraph
+    // must not steal the identity of the previous paragraph's full stop.
+    const middle = oldText.length > prefix + suffix && newText.length > prefix + suffix
+      ? sfRetainedMiddle(oldText.slice(prefix), newText.slice(prefix), prefix) : null
+    const runs = [{ oldStart: 0, start: 0, end: prefix },
+      ...(middle ?? [{ oldStart: oldText.length - suffix, start: newText.length - suffix, end: newText.length }]),
+      { oldStart: oldText.length, start: newText.length, end: newText.length }]
     const retained = []
     for (const span of state.spans) {
-      // Text before the edit point keeps its ranges and its progress.
-      if (span.end <= prefix) {
-        retained.push(span)
-        continue
-      }
+      if (span.end <= prefix) { retained.push(span); continue }
       sfFreeSpan(span)
-      if (span.start < prefix) {
-        retained.push({ start: span.start, end: prefix, born: span.born, ranges: [], level: -1, summary: span.summary, value: span.value, paraStart: span.paraStart })
-      }
-      const start = Math.max(span.start, oldText.length - suffix)
-      if (start < span.end) {
-        const shift = newText.length - oldText.length
-        retained.push({ start: start + shift, end: span.end + shift, born: span.born, ranges: [], level: -1, summary: span.summary, value: span.value, paraStart: span.paraStart })
+      for (const run of runs) {
+        const start = Math.max(span.start, run.oldStart)
+        const end = Math.min(span.end, run.oldStart + run.end - run.start)
+        if (start >= end) continue
+        const shift = run.start - run.oldStart
+        retained.push({ start: start + shift, end: end + shift, born: span.born, ranges: [], level: -1, summary: span.summary, value: span.value, paraStart: span.paraStart })
       }
     }
     state.spans = retained
-    // Anything the edit rewrote at or before the frontier must be revealed
-    // again from the edit point: the text there is no longer the text that
-    // was revealed. A purely appended tail leaves the frontier alone.
-    if (state.cursor > prefix) state.cursor = Math.min(prefix, newText.length)
+    let frontier = 0, end = 0
+    for (const run of runs) {
+      if (run.start > end) gaps.push({ start: end, end: run.start })
+      if (run.start === frontier && state.cursor >= run.oldStart) {
+        frontier = Math.min(run.end, run.start + state.cursor - run.oldStart)
+      }
+      end = run.end
+    }
+    state.cursor = frontier
     state.arrived = newText.length
   }
   const replacedFrom = snapshot.replacedFrom
@@ -926,8 +1046,8 @@ function sfUpdate(state, source, snapshot, animate) {
   }
   Object.assign(state, source, snapshot)
   if (animate && newText !== oldText) {
-    sfAppend(state, prefix, newText.length - suffix)
-    // Changed middles join retained suffixes in reading order.
+    for (const gap of gaps) sfAppend(state, gap.start, gap.end)
+    // Changed middles join all retained runs in reading order.
     if (prefix !== oldText.length) state.spans.sort((a, b) => a.start - b.start)
   }
   const nextProvisional = sfProvisionalCandidates(state)
@@ -1325,8 +1445,10 @@ function sfFlush() {
     return
   }
   if (document.querySelector(SF_LIVE) !== null) sfSetRules(true)
+  sfBeginViews()
   for (const seat of sfDirty) sfReadSeat(seat)
   sfDirty.clear()
+  sfEndViews()
   sfResolveRows()
   sfSyncSurfaces()
   sfSchedule()
@@ -1366,7 +1488,11 @@ function sfOnMutations(records) {
       // sfReadSeat resolves the scope itself; one closest per record is enough.
       const seat = element.closest(SF_SEAT)
       if (seat !== null) sfDirty.add(seat)
+      // Loading hint insertion/removal can be the only mutation in this commit.
+      // Re-read the column before closing its history boundary.
+      if (record.type === 'childList' && element.matches('[data-chat-flow]')) sfMark(element)
     }
+    if (record.type === 'attributes' && record.attributeName === 'data-conversation-session' && element !== null) sfMark(element)
     if (record.type === 'attributes' && element !== null && element.closest(SF_SEAT) === null) {
       sfColorCache.clear()
       for (const state of sfActive) {
@@ -1394,6 +1520,7 @@ function sfOnMutations(records) {
 }
 
 function sfSeed(root = document) {
+  sfBeginViews()
   for (const seat of root instanceof Element && root.matches(SF_SEAT) ? [root] : root.querySelectorAll(SF_SEAT)) {
     if (sfHasLive(seat)) sfReadSeat(seat, true)
     else {
@@ -1401,6 +1528,7 @@ function sfSeed(root = document) {
       if (scope !== null) sfProcessRows(seat, scope, true)
     }
   }
+  sfEndViews()
 }
 
 function sfTick() {
@@ -1415,8 +1543,10 @@ function sfTick() {
     sfSeed()
     return
   }
+  sfBeginViews()
   for (const seat of sfDirty) sfReadSeat(seat)
   sfDirty.clear()
+  sfEndViews()
   for (const [scope, groups] of sfScopes) {
     for (const [key, group] of groups) {
       if (scope.isConnected && group.seat.isConnected && scope.contains(group.seat)) continue
@@ -1517,6 +1647,7 @@ function sfReset() {
   sfRowAnimations.clear()
   sfRows.clear()
   sfScopes.clear()
+  sfViews.clear()
   sfClocks.clear()
   sfDirty.clear()
 }
@@ -1537,7 +1668,7 @@ function sfRefresh() {
   sfObserver.observe(document.body, {
     childList: true, subtree: true, characterData: true, attributes: true,
     // Class churn is constant during streaming; only theme and state attributes re-colour a fade.
-    attributeFilter: ['data-streaming', 'data-state', 'data-expanded', 'data-open', 'aria-expanded', 'data-ds-dark-theme'],
+    attributeFilter: ['data-streaming', 'data-state', 'data-expanded', 'data-open', 'aria-expanded', 'data-ds-dark-theme', 'data-conversation-session'],
   })
 }
 
@@ -1573,6 +1704,7 @@ function sfStop() {
   sfSelected = null
   sfEnabled = false
   sfReset()
+  sfKnownBodies.clear()
   hfDispose()
 }
 

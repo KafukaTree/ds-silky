@@ -1,4 +1,5 @@
 {
+  "chatView.historyHint.fragment": "_hint",
   "approval.card.exact": "[class~=\"gdzZCG_card\"]",
   "chatNavigation.crumb.exact": "[class~=\"kiGsTW_crumb\"]",
   "chatNavigation.crumbSubagent.exact": "[class~=\"kiGsTW_crumbSubagent\"]",

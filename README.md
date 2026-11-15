@@ -56,7 +56,7 @@ dsh plugin --profile desktop add @kafukatree/ds-silky
 也可以从 [GitHub Releases](https://github.com/KafukaTree/ds-silky/releases) 下载 `.tgz` 发布包，再安装本地文件：
 
 ```bash
-dsh plugin --profile desktop add ./kafukatree-ds-silky-0.20.2.tgz
+dsh plugin --profile desktop add ./kafukatree-ds-silky-0.20.3.tgz
 ```
 
 ### 从旧版迁移
