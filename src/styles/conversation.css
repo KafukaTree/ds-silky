@@ -133,20 +133,26 @@ html body[data-ds-dark-theme] {
 @host(codeBlock.card.contains) {
   border-radius: 12px !important;
 }
+/* A sticky banner needs an opaque square backing: otherwise scrolling
+   code paints through its rounded corner wedges. Keep the visible radius
+   on the toolbar, and do not create an overflow scroll ancestor here. */
+@host(codeBlock.bannerWrap.contains) {
+  border-radius: 0 !important;
+}
 @host(codeToolbar.header.contains) {
   border-radius: 12px 12px 0 0 !important;
   /* The header shipped 18px on the right while the code body uses 22,
      so the copy button sat 4px inside the code's right edge. */
-  padding: 3px 22px 2px !important;
-  min-height: 0 !important;
+  box-sizing: border-box;
+  padding: 6px 22px !important;
+  min-height: 36px !important;
+  line-height: 20px !important;
 }
-/* The language label and the two actions were 24px squares with 10px of
-   padding above them, so a code block opened with a 42px band for one
-   11px word — more than a line of the code below it. Tighter row,
-   smaller targets. */
+/* Keep equal breathing room above and below the label, with native-sized
+   action targets. The former 25px band crowded both text and controls. */
 @host(codeToolbar.action.contains) {
-  width: 20px !important;
-  height: 20px !important;
+  width: 24px !important;
+  height: 24px !important;
 }
 @host(codeToolbar.actions.contains) {
   gap: 2px !important;

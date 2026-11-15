@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><title>行内底色显示顺序回放</title>
+<style>
+body{margin:40px auto;padding:0 28px;max-width:800px;background:#fff;color:#222;font:16px/1.7 system-ui}header{display:flex;gap:16px;align-items:center;border-bottom:1px solid #eee;padding-bottom:16px;margin-bottom:24px}button{font:inherit;padding:6px 14px;background:#fff;border:1px solid #ccc;border-radius:8px;cursor:pointer}small,#status{color:#777;font-size:13px}p{margin:20px 0}li{margin:10px 0}code{color:#355b91;font:14px/1.6 monospace} :not(pre)>code{display:inline-flex;align-items:center;box-sizing:border-box;background:#eff0f3;border:.5px solid #e2e4e8;border-radius:4px;padding:0 5px}.md-code-block{margin:20px 0;background:#f5f6f8;border:1px solid #e2e4e8;border-radius:10px}.md-code-block>[data-code-block-banner]{padding:6px 16px;border-bottom:1px solid #e2e4e8;font-size:13px;color:#666}pre{margin:0;padding:16px}
+</style>
+<header><button id="play">重放底色交接</button><small>根据录屏内容构造的回归页面 · 合成输入，实际插件</small></header>
+<div id="status" role="status">准备就绪</div>
+<main data-conversation-region="chat" id="flow"></main>
+<script>
+window.__disposers=[];window.__ModuleLoader__={load(module){module.factory(()=>{throw Error('No bridge in fixture')}).apply({effect(callback){__disposers.push(callback())}})}};
+let serial=0;
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
+async function play(){
+ const n=++serial;flow.replaceChildren();const seat=document.createElement('section');seat.dataset.chatFlowKey='replay-'+n;seat.innerHTML='<div data-streaming="true"><p>有，</p></div>';flow.append(seat);await pause(180);if(n!==serial)return;
+ const root=seat.firstChild;root.querySelector('p').firstChild.appendData('就是这条消息的附件本身。');
+ root.insertAdjacentHTML('beforeend','<ul><li>消息头里的 <code>hl_test.png.annotated.png</code> 只作为附件发送，标注用的临时文件发出后即删除。</li></ul>');
+ statusText('前面的文字未完成时，文件名底色不应提前露出。');
+ await pause(700);if(n!==serial)return;
+ root.insertAdjacentHTML('beforeend','<p>继续核对附件信息，这段说明显示完成之后才应显示下面的代码卡片。</p><div class="md-code-block"><div data-code-block-banner>JavaScript</div><div data-code-block-content><pre><code>const answer = 42;</code></pre></div></div>');
+ await pause(1200);if(n!==serial)return;
+ root.dataset.streaming='false';statusText('回放完成：检查行内底色、边框与代码卡片是否遵循前后顺序。');
+}
+function statusText(text){document.querySelector('#status').textContent=text}
+document.querySelector('#play').onclick=play;
+const runtime=document.createElement('script');runtime.src='../../lib/client.js?inline-background='+Date.now();document.body.append(runtime);
+</script></html>

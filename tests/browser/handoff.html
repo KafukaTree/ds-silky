@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><title>思考 → 工具显示顺序回归</title>
+<style>
+body{margin:40px auto;padding:0 28px;max-width:800px;background:#fff;color:#222;font:15px/1.6 system-ui}header{display:flex;align-items:center;gap:16px;border-bottom:1px solid #eee;padding-bottom:16px;margin-bottom:24px}button{font:inherit;padding:6px 14px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer}small{color:#777} [data-variant=think]{color:#888} [data-disclosure-header]{font-size:15px} p{margin:12px 0} [data-tool]{margin-top:24px;color:#444}pre{background:#f6f6f6;padding:12px;border-radius:8px;font-size:14px}#status{font-size:13px;color:#666}
+</style>
+<header><button id="play">重放交接</button><small>宿主结构回归页面 · 模拟输入，加载实际插件</small></header>
+<div id="status" role="status">准备就绪</div>
+<main data-conversation-region="chat"><div data-chat-flow-key="process" data-step-process><div data-step-process-body><div data-chat-flow id="flow"></div></div></div></main>
+<script>
+window.__disposers=[];window.__ModuleLoader__={load(module){module.factory(()=>{throw Error('No bridge in fixture')}).apply({effect(callback){__disposers.push(callback())}})}};
+let serial=0;
+async function play(){
+ const n=++serial;const flow=document.querySelector('#flow');flow.replaceChildren();
+ const seat=document.createElement('section');seat.dataset.chatFlowKey='thinking-'+n;seat.dataset.chatFlowKind='assistant-step';
+ seat.innerHTML='<div data-variant="think" data-state="running" data-expanded="true"><div data-disclosure-header>思考</div><div id="tail"><p>先核对图中的层次与箭头，再整理最后的说明。</p></div></div>';
+ flow.append(seat);await new Promise(r=>setTimeout(r,60));if(n!==serial)return;
+ const tail=seat.querySelector('#tail');tail.insertAdjacentHTML('beforeend',Array.from({length:6},(_,i)=>'<p>'+ (i+1)+'. 检查这一层的职责和上下文，确保说明完整，并且前面的文字已经清晰显示。</p>').join(''));
+ await new Promise(r=>setTimeout(r,30));if(n!==serial)return;
+ seat.firstChild.dataset.state='ok';
+ const tool=document.createElement('section');tool.dataset.chatFlowKey='tool-'+n;tool.dataset.chatFlowKind='tool';tool.innerHTML='<div data-variant="tool" data-tool="terminal" data-state="running"><div data-disclosure-header>›_ 运行命令</div><pre>printf "检查完成"</pre></div>';flow.append(tool);
+ const body=document.createElement('section');body.dataset.chatFlowKey='answer-'+n;body.dataset.chatFlowKind='assistant';body.innerHTML='<div data-streaming="true"><p>正文从这里开始，随后按不同的上游速度继续追加。</p><pre><code>const answer = 42;</code></pre></div>';flow.append(body);
+ document.querySelector('#status').textContent='思考、工具和首段正文已同时到达；应依次显示，然后跟随变速输入。';
+ const text=body.querySelector('p').firstChild;const content='平滑只需要很短的过渡，文字应紧跟输入速度，不应持续堆积。';let credit=0,index=0,last=performance.now();const start=last;
+ while(n===serial&&performance.now()-start<6000){
+  await new Promise(r=>setTimeout(r,40));if(n!==serial)return;
+  const now=performance.now(),elapsed=now-start;const speed=elapsed<1800?20:elapsed<3600?120:elapsed<4300?0:30;
+  credit+=speed*(now-last)/1000;last=now;const count=Math.floor(credit);credit-=count;
+  if(count){let addition='';for(let i=0;i<count;i++)addition+=content[index++%content.length];text.appendData(addition)}
+ }
+ if(n!==serial)return;body.firstChild.dataset.streaming='false';tool.firstChild.dataset.state='ok';
+ document.querySelector('#status').textContent='模拟上游已结束：20 → 120 → 暂停 → 30 字/秒；检查尾部是否迅速收齐。';
+}
+document.querySelector('#play').onclick=play;
+const runtime=document.createElement('script');runtime.src='../../lib/client.js?handoff='+Date.now();document.body.append(runtime);
+</script></html>

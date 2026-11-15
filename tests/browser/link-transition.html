@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><title>真实解析器引用转换回放</title>
+<style>
+body{margin:32px auto;padding:0 24px;max-width:760px;background:#fff;color:#24262a;font:17px/1.8 system-ui}header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;border-bottom:1px solid #e5e7eb;padding-bottom:16px}button,select{font:inherit;background:white;border:1px solid #d7dbe1;border-radius:8px;padding:6px 12px}button{cursor:pointer}small,#status{font-size:13px;color:#77808c}main{max-width:410px;margin-top:28px;overflow-wrap:anywhere}a{color:#467be8;text-decoration:underline}a svg{display:inline-block;width:14px;height:14px;vertical-align:-2px;margin-right:4px}li{padding-left:2px}p{margin:18px 0}.footer{color:#5578b7;font-size:14px;margin-top:28px}details{margin-top:28px;font-size:13px;color:#77808c}pre{white-space:pre-wrap;overflow-wrap:anywhere}
+</style>
+<header><button id="play" disabled>重放引用转换</button><select id="scenario" aria-label="输入场景"></select></header>
+<p><small>真实 DSH 增量解析器与 React 服务端渲染快照；浏览器重挂载回放，非真实模型会话。</small></p>
+<p id="status" role="status">正在加载样本</p>
+<main data-conversation-region="chat" id="flow"></main>
+<details><summary>当前 Markdown 输入</summary><pre id="raw"></pre></details>
+<script>
+window.__disposers=[];window.__ModuleLoader__={load(module){module.factory(()=>{throw Error('No bridge in fixture')}).apply({effect(callback){__disposers.push(callback())}})}};
+const pause=ms=>new Promise(r=>setTimeout(r,ms));let serial=0,cases=[];window.layoutSamples=[];
+async function play(){
+ const n=++serial,item=cases.find(c=>c.id===document.querySelector('#scenario').value);flow.replaceChildren();window.layoutSamples=[];
+ const seat=document.createElement('section');seat.dataset.chatFlowKey='links-'+n;seat.innerHTML='<div data-streaming="true"></div><div class="footer">深度求索中…</div>';flow.append(seat);const root=seat.firstChild;
+ for(let i=0;i<item.frames.length;i++){
+  await pause(item.schedule==='burst'?90:i%3===0?200:70);if(n!==serial)return;
+  const frame=item.frames[i];root.innerHTML=frame.html;root.dataset.streaming=String(frame.streaming);document.querySelector('#raw').textContent=frame.accumulatedSource;
+  document.querySelector('#status').textContent=item.id+' · '+(i+1)+' / '+item.frames.length;
+  await new Promise(requestAnimationFrame);if(n!==serial)return;
+  window.layoutSamples.push({frame:i,streaming:frame.streaming,height:root.getBoundingClientRect().height,footerTop:seat.lastChild.getBoundingClientRect().top,links:[...root.querySelectorAll('a')].map(a=>({text:a.textContent,visibility:getComputedStyle(a).visibility,width:a.getBoundingClientRect().width,icons:[...a.querySelectorAll('svg')].map(s=>({opacity:getComputedStyle(s).opacity,visibility:getComputedStyle(s).visibility}))}))});
+ }
+ await pause(1000);if(n!==serial)return;document.querySelector('#status').textContent='回放完成：'+item.id;
+}
+document.querySelector('#play').onclick=play;
+const runtime=document.createElement('script');runtime.src='../../lib/client.js?links='+Date.now();document.body.append(runtime);
+fetch('./host-markdown-snapshots.json').then(r=>{if(!r.ok)throw Error('样本加载失败');return r.json()}).then(data=>{cases=data.cases;for(const item of cases){const option=document.createElement('option');option.value=item.id;option.textContent=item.id;document.querySelector('#scenario').append(option)}document.querySelector('#scenario').value='citation-boundaries';document.querySelector('#play').disabled=false;document.querySelector('#status').textContent='准备就绪：27 组真实解析器快照'}).catch(e=>document.querySelector('#status').textContent=e.message);
+</script></html>

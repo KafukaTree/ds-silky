@@ -1,0 +1,219 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>卡片标题与滚动圆角回归</title>
+<style>
+:root{--dsw-alias-bg-base:#fff;--dsw-alias-markdown-code-block:#f3f5f7;--dsw-alias-label-primary:#27313d;--dsw-alias-label-secondary:#626973;--dsw-alias-label-tertiary:#858b94;--dsw-alias-border-l2:#e1e4e8;--dsw-font-family:system-ui,sans-serif;--ds-font-family-code:monospace;--dsw-radius-lg:12px;--dsw-radius-sm:6px;--dsw-font-markdown-code-block:12px/20px monospace;--dsw-alias-interactive-bg-hover:#e7ebf0}
+body{margin:32px;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font:14px/22px system-ui,sans-serif}body[data-ds-dark-theme]{--dsw-alias-bg-base:#202226;--dsw-alias-markdown-code-block:#2b2e34;--dsw-alias-label-primary:#e5e8ed;--dsw-alias-label-secondary:#a8afb9;--dsw-alias-label-tertiary:#959ca6;--dsw-alias-border-l2:#3b4048}
+h1{font-size:18px;font-weight:500}h2{font-size:14px;font-weight:500} .examples{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;max-width:1000px}.examples>section{min-width:0}.outer-scroll{height:300px;overflow:auto;border:1px solid var(--dsw-alias-border-l2);padding:0 16px}.UHhYua_bodyScroll{max-height:260px;overflow-y:auto;scrollbar-width:thin}.UHhYua_codeBody{margin:4px 0 4px 4px}.UHhYua_ioSection{padding:12px 22px}button{font:inherit;color:inherit}#theme{background:transparent;border:1px solid var(--dsw-alias-border-l2);border-radius:6px;padding:4px 10px}pre{tab-size:2}@media(max-width:640px){body{margin:16px}.examples{grid-template-columns:1fr}}
+/* Host geometry from CodeBlock.module.css and CodeCard.module.css.
+   Preserve sticky wrappers and display:contents: these are regression inputs. */
+/* Visual baseline: deepsuite `@deepseek/md` code-block._css_7gxqk_fixture. Highlight colors
+   stay on the existing shiki `--shiki-*` sheet (not Prism highlight._css_7gxqk_fixture). */
+
+._block_7gxqk_fixture {
+  --dsl-code-block-banner-background-color: var(--dsw-alias-markdown-code-block-banner);
+  --dsl-code-block-border-radius: var(--dsw-radius-lg);
+  /* Local 11/18 instead of the shared --dsw-font-xs-13: the banner scales
+     with the markdown 0.875 ladder without shrinking every other xs-13 use. */
+  --dsl-code-block-banner-font: 11px/18px var(--dsw-font-family);
+  --dsl-code-block-content-font: var(--dsw-font-markdown-code-block);
+  --dsl-code-block-background: var(--dsw-alias-markdown-code-block);
+
+  position: relative;
+  margin: 16px 0;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsl-code-block-background);
+  border-radius: var(--dsl-code-block-border-radius);
+}
+
+._block_7gxqk_fixture:not(:last-child) {
+  margin-bottom: 11px;
+}
+
+._bannerWrap_7gxqk_fixture {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background-color: var(--dsw-alias-bg-base);
+  border-top-left-radius: var(--dsl-code-block-border-radius);
+  border-top-right-radius: var(--dsl-code-block-border-radius);
+}
+
+._banner_7gxqk_fixture {
+  background: var(--dsl-code-block-banner-background-color);
+  padding: 9px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font: var(--dsl-code-block-banner-font);
+  border-top-left-radius: var(--dsl-code-block-border-radius);
+  border-top-right-radius: var(--dsl-code-block-border-radius);
+}
+
+._infostring_7gxqk_fixture {
+  color: var(--dsw-alias-label-primary);
+  font-family: var(--ds-font-family-code);
+  font-size: 11px;
+  line-height: 18px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+._action_7gxqk_fixture {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+._copyButton_7gxqk_fixture {
+  background-color: rgb(255 255 255 / 0);
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+/* Consumers may turn the stable content node into a viewport without changing
+   the default CodeBlock layout. */
+._content_7gxqk_fixture {
+  display: contents;
+}
+
+._block_7gxqk_fixture :where(pre) {
+  font: var(--dsl-code-block-content-font);
+  padding: 16px;
+  margin: 0 !important;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--dsl-code-block-background);
+  /* Bottom radii live on <pre>: overflow:hidden on ._block_7gxqk_fixture would kill the
+     sticky banner, and this opaque fill otherwise squares off the wrapper. */
+  border-bottom-left-radius: var(--dsl-code-block-border-radius);
+  border-bottom-right-radius: var(--dsl-code-block-border-radius);
+}
+
+/* Shiki inlines its theme background var; route it to the repo token. */
+._block_7gxqk_fixture :where(pre._shiki_7gxqk_fixture) {
+  background: var(--dsl-code-block-background) !important;
+}
+
+._block_7gxqk_fixture :where(pre) code {
+  font: inherit;
+  background: none;
+  padding: 0;
+}
+
+._plain_7gxqk_fixture {
+  color: var(--dsw-alias-label-primary);
+}
+
+._card_7gxqk_fixture :where(pre) {
+  padding: 6px 22px 20px;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+._card_7gxqk_fixture[data-code-wrap='false'] {
+  --dsl-code-block-line-white-space: pre;
+}
+
+._card_7gxqk_fixture[data-code-wrap='false'] :where(pre) {
+  white-space: pre;
+  overflow-wrap: normal;
+}
+._card_1mqf1_fixture {
+  position: relative;
+  margin: 16px 0;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-markdown-code-block);
+  border-radius: var(--dsw-radius-lg);
+  font: var(--dsw-font-markdown-code-block);
+}
+
+._header_1mqf1_fixture {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px 8px 22px;
+  background: var(--dsl-code-block-background, var(--dsw-alias-markdown-code-block));
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  color: var(--dsw-alias-label-secondary);
+  font: 11px/18px var(--dsw-font-family);
+}
+
+._heading_1mqf1_fixture {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+
+._language_1mqf1_fixture {
+  color: var(--dsw-alias-label-tertiary);
+  flex: none;
+  font-family: var(--ds-font-family-code);
+}
+
+._title_1mqf1_fixture {
+  color: var(--dsw-alias-label-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+._actions_1mqf1_fixture {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+._status_1mqf1_fixture {
+  margin-right: 8px;
+  color: var(--dsw-alias-label-tertiary);
+  white-space: nowrap;
+}
+
+._action_1mqf1_fixture {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--dsw-radius-sm);
+  color: var(--dsw-alias-label-secondary);
+  background: transparent;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  ._action_1mqf1_fixture:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+._action_1mqf1_fixture:focus-visible {
+  outline: 1px solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+}
+
+._body_1mqf1_fixture {
+  padding: 6px 22px 20px;
+  font: var(--dsw-font-markdown-code-block);
+  overflow-x: auto;
+}
+
+</style><h1>卡片标题与滚动圆角</h1><p>在两个区域内滚动，检查标题留白、吸顶与卡片边缘。</p><button id="theme" onclick="document.body.toggleAttribute('data-ds-dark-theme')">切换深浅色</button><main class="examples"><section><h2>正文代码卡片</h2><div id="ordinaryScroll" class="outer-scroll"><div id="ordinary"></div><p style="height:180px">代码块结束</p></div></section><section><h2>工具代码与输出</h2><div id="ptcScroll" class="UHhYua_bodyScroll"><div id="ptc" class="UHhYua_codeBody"></div></div><div class="UHhYua_ioCard"><div class="UHhYua_ioSection">输出<br>处理完成，共 40 行。</div></div></section></main>
+<script>
+const markup = `<div class="_block_7gxqk_fixture _card_7gxqk_fixture md-code-block" data-code-wrap="false"><div class="_bannerWrap_7gxqk_fixture"><div class="_header_1mqf1_fixture" data-code-block-banner><div class="_heading_1mqf1_fixture"><span class="_language_1mqf1_fixture">Python</span><span class="_title_1mqf1_fixture">分析结果</span></div><div class="_actions_1mqf1_fixture"><button class="_action_1mqf1_fixture" aria-label="换行">↵</button><button class="_action_1mqf1_fixture" aria-label="复制">⧉</button></div></div></div><div class="_content_7gxqk_fixture" data-code-block-content><pre><code>${Array.from({length:40},(_,i)=>`${String(i+1).padStart(2,'0')}  result = analyze(samples, method="stable")`).join('\n')}</code></pre></div></div>`;
+ordinary.innerHTML=markup;ptc.outerHTML=markup.replace('class="_block_', 'id="ptc" class="UHhYua_codeBody _block_');
+window.__disposers=[];window.__ModuleLoader__={load(module){module.factory(()=>{throw Error('No host bridge')}).apply({effect(callback){__disposers.push(callback())}})}};
+</script><script src="../../lib/client.js"></script></html>

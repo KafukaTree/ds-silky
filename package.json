@@ -1,6 +1,6 @@
 {
   "name": "@kafukatree/ds-silky",
-  "version": "0.20.1",
+  "version": "0.20.2",
   "description": "DS Silky — refined typography, thoughtful cards and fluid streaming motion for DeepSeek Harness.",
   "type": "module",
   "main": "./lib/index.js",
@@ -29,7 +29,7 @@
   },
   "files": [
     "lib/client.js", "lib/index.js", "cordis.patch.yml", "src", "scripts",
-    "tests/unit", "tests/browser/run.mjs", "tests/browser/fixture.html", "tests/browser/stream-demo.html",
+    "tests/unit", "tests/browser/run.mjs", "tests/browser/fixture.html", "tests/browser/stream-demo.html", "tests/browser/card-scroll.html", "tests/browser/handoff.html", "tests/browser/inline-background.html", "tests/browser/link-transition.html", "tests/browser/host-markdown-generate.mjs", "tests/browser/host-markdown-snapshots.json",
     "assets", "locale", "DEVELOPMENT.md", "CHANGELOG.md"
   ],
   "dsh": {

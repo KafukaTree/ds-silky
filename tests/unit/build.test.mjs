@@ -12,9 +12,9 @@ test('build is deterministic and matches the installed artifact', async () => {
   assert.equal(await readFile(resolve(root, 'lib/client.js'), 'utf8'), result.code)
 })
 
-test('all CSS token lines and cascade order match the reviewed 0.19.1 surface', () => {
+test('all CSS token lines and cascade order match the reviewed 0.20.2 cards and list markers', () => {
   const normalized = result.css.split('\n').map(line => line.trim()).filter(Boolean).join('\n')
-  assert.equal(digest(normalized), '991f675ee38ce0e7f7a1dfb0b7151919f93986617326b63b6ddb75ee12a4bcd0')
+  assert.equal(digest(normalized), 'efb470cd7d10bbe90de1fd155bdfb6c290f08a46dd01884994187bab57e5de01')
 })
 
 test('single-file host format keeps one version source and no unresolved adapters', () => {

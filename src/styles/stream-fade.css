@@ -22,3 +22,10 @@
 ::highlight(daf-fade-14) { color: color-mix(in srgb, var(--daf-ink, currentColor) 93.33%, transparent); }
 ::highlight(daf-fade-15) { color: color-mix(in srgb, var(--daf-ink, currentColor) 100.00%, transparent); }
 
+/* Only explicitly owned arriving markers participate. Colour affects the
+   marker alone, including ordered numbers; nested list text stays independent.
+   These properties/attributes are outside the stream observer's filter. */
+li[data-daf-stream-marker]::marker {
+  color: color-mix(in srgb, var(--daf-marker-ink, currentColor) var(--daf-marker-alpha, 0%), transparent) !important;
+}
+
