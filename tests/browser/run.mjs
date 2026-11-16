@@ -480,6 +480,462 @@ await run(`window.__withIsolatedFixture = async (callback, html) => {
     finally { frame.remove(); }
   }
 }`);
+const sendHandoffFixture = (await readFile(new URL('./send-handoff.html', import.meta.url), 'utf8'))
+  .replace(/<script src="\.\.\/\.\.\/lib\/client\.js"><\/script>/, '');
+for (const options of [
+  { behavior: 'smooth', height: 160, slot: true },
+  { behavior: 'instant', height: 72, slot: true },
+  { behavior: 'smooth', height: 160, slot: false },
+  { behavior: 'smooth', height: 160, slot: true, reading: true },
+]) {
+  await test('send handoff: ' + JSON.stringify(options) + ' retains geometry before empty markers refresh', async () => {
+    const r = await run(`return __withIsolatedFixture(w => w.runHandoff(${JSON.stringify(options)}), ${JSON.stringify(sendHandoffFixture)})`);
+    assert.equal(r.emptyHeight, 0, 'an actually empty seat must retain zero natural height');
+    assert.equal(r.handoff.staleEmpty, true, 'exercise the host layout effect before marker refresh');
+    assert.equal(r.handoff.rowHeight, options.height, 'new content must contribute its height immediately');
+    assert.equal(r.handoff.floorAfter, r.handoff.floorBefore, 'equal-height echo admission must not shrink the range');
+    assert.ok(r.handoff.after >= r.handoff.before - 1, JSON.stringify(r.handoff));
+    assert.equal(r.reversals.length, 0, JSON.stringify(r.reversals));
+    if (options.reading) assert.ok(r.samples.every(s => Math.abs(s.top - 200) <= 1), 'preserve manual reading position');
+    else assert.ok(Math.abs(r.samples.at(-1).top - r.samples.at(-1).floor) <= 1, 'native follow reaches the tail');
+  });
+}
+
+for (const kind of ['body', 'reasoning']) for (const paragraphs of [1, 6]) {
+  await test('stream tail: ' + kind + ' bounds hidden height for ' + paragraphs + ' burst paragraphs', async () => {
+    const r = await run(`return __withIsolatedFixture(async w => {
+      const d = w.document, frame = () => new Promise(resolve => w.requestAnimationFrame(resolve));
+      await frame(); await frame();
+      const seat = d.createElement('section');
+      seat.dataset.chatFlowKey = 'visual-burst';
+      seat.innerHTML = ${JSON.stringify(kind === 'body' ? '<div data-streaming="true" id="burst"></div>' : '<div data-variant="think" data-state="running" data-expanded="true" id="burst"></div>')};
+      d.querySelector('main').append(seat);
+      const root = seat.firstElementChild;
+      root.style.cssText = 'width:360px;font:18px/30px sans-serif';
+      // Measure a live append after the reasoning header's entrance settles;
+      // cross-source/header ordering has its own tests below.
+      await new Promise(resolve => w.setTimeout(resolve, 120));
+      const nodes = [];
+      for (let i = 0; i < ${paragraphs}; i++) {
+        const p = d.createElement('p'); p.style.margin = '0 0 12px';
+        p.textContent = '这是一批已经到达但不应堆在隐藏缓冲中的文字。'.repeat(${paragraphs === 1 ? 12 : 2});
+        root.append(p); nodes.push(p.firstChild);
+      }
+      const start = w.performance.now(), samples = [];
+      const rect = (node, i) => {const range=d.createRange();range.setStart(node,i);range.setEnd(node,i+1);return range.getBoundingClientRect()};
+      const end = rect(nodes.at(-1), nodes.at(-1).length-1);
+      for (let tick = 0; tick < 12; tick++) {
+        await frame();
+        const levels = new Map(nodes.map(n => [n,new Array(n.length).fill(15)]));
+        for (const [name,hi] of w.CSS.highlights) {
+          if (!name.startsWith('daf-fade-')) continue;
+          const level = Number(name.slice(9));
+          for (const range of hi) {
+            const values=levels.get(range.startContainer);
+            if(values) for(let i=range.startOffset;i<range.endOffset;i++) values[i]=level;
+          }
+        }
+        let visibleBottom=root.getBoundingClientRect().top;
+        outer: for (const node of [...nodes].reverse()) for(let i=node.length-1;i>=0;i--) {
+          if(levels.get(node)[i]>=3){visibleBottom=rect(node,i).bottom;break outer;}
+        }
+        samples.push({ms:w.performance.now()-start,hiddenHeight:end.bottom-visibleBottom,tail:levels.get(nodes.at(-1)).at(-1)});
+      }
+      return {samples,status:w.__dshAnthropicFonts.streamFadeStatus()};
+    })`);
+    const painted = r.samples.filter(s => s.ms >= 50);
+    assert.ok(painted.length > 0);
+    assert.ok(painted.every(s => s.hiddenHeight <= 75), JSON.stringify(r.samples));
+    assert.ok(r.samples.some(s => s.tail > 0 && s.tail < 15), 'burst must fade rather than flash');
+    assert.equal(r.samples.at(-1).tail, 15);
+    assert.equal(r.status.buffer, 0);
+  });
+}
+
+// Statistic popover host fixture: the same sticky-composer scroll structure as
+// tests/browser/stat-popover.html and the real surface rules from
+// tests/browser/stat-popover-host.css. The host anchor-name is deliberately an
+// INLINE style because CSSOM custom-ident discovery reads node.style.anchorName.
+const statPopoverHostCss = await readFile(new URL('./stat-popover-host.css', import.meta.url), 'utf8');
+const composerPopoverHostCss = await readFile(new URL('./composer-popover-host.css', import.meta.url), 'utf8');
+const statPopoverFixture = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--dsw-radius-lg:16px;--dsw-specific-menu:#f8f9fa;--dsw-alias-border-l1:#ddd;--dsw-alias-border-l2:#ddd;--dsw-alias-label-primary:#17191d;--dsw-alias-label-secondary:#626770;--dsw-alias-label-tertiary:#868b94;--dsh-frame-top-clearance:48px;--dsh-frame-overlay-top:calc(var(--dsh-frame-top-clearance) + 20px);--dsw-elevation-prominent:0 3px 16px #0001}
+body{margin:0;font:14px system-ui}
+#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+header{flex:none;height:34px;display:flex;gap:12px;align-items:center}
+#scroll{display:flex;flex:1;flex-direction:column;min-height:0;overflow-y:auto;scrollbar-gutter:stable}
+#flow{flex:1 0 auto;min-height:auto;padding:20px}
+#composer{position:sticky;bottom:0;margin-top:auto;z-index:9;will-change:transform;overflow-anchor:none;background:#fff;padding:16px;flex:none}
+#input{height:72px;border:1px solid #ddd;border-radius:12px;padding:12px;margin-bottom:8px}
+#anchor{display:inline-flex;margin-left:130px}
+button{font:inherit;border:0;border-radius:8px;background:#f1f2f4;padding:4px 10px;cursor:pointer}
+${statPopoverHostCss}
+</style>
+<div id="app"><header><button id="stream">开始输出</button><output id="status"></output></header><div id="scroll" data-conversation-scroll><div id="flow"><p>模拟历史消息</p></div><div id="composer"><div id="input">输入消息</div><span id="anchor" style="anchor-name:--dsh-stat-fixture" data-composer-stat="tokens"><button id="trigger" aria-haspopup="dialog" aria-expanded="false">32.4M tok · 缓存96%</button></span></div></div></div>
+<script>
+window.__disposers=[];
+window.__ModuleLoader__={load(module){window.__plugin=module.factory(()=>{throw Error('No terminal bridge in fixture')});window.__plugin.apply({effect(callback){__disposers.push(callback())}})}};
+window.__host=(function(){
+  var flow=document.getElementById('flow'),scroll=document.getElementById('scroll'),trigger=document.getElementById('trigger'),anchor=document.getElementById('anchor'),count=0;
+  // The real composer UsagePill exposes data-session-stats-usage, so the
+  // primary fixture uses that third recognized marker rather than turn usage.
+  function markup(){
+    return '<div class="title"><span>Token 用量</span><span>32,432,856 tok</span></div>'+
+      '<div class="titleRule"></div>'+
+      '<dl class="details" data-session-stats-usage><dt>缓存命中</dt><dd>96%</dd>'+
+      '<dt>未缓存输入</dt><dd>1,167,995 tok</dd><dt>缓存读取</dt><dd>31,053,312 tok</dd>'+
+      '<dt>输出</dt><dd>211,549 tok</dd></dl>';
+  }
+  function close(){
+    var previous=document.querySelector('[role=dialog]');
+    if(previous)previous.remove();
+    trigger.setAttribute('aria-expanded','false');
+  }
+  function open(options){
+    options=options||{};close();trigger.setAttribute('aria-expanded','true');
+    var panel=document.createElement('div');panel.className='panel';panel.setAttribute('role','dialog');
+    panel.style.positionAnchor=options.anchorName||'--dsh-stat-fixture';
+    if(options.priorVars){for(var key in options.priorVars)panel.style.setProperty(key,options.priorVars[key])}
+    panel.innerHTML=markup();document.body.append(panel);return panel;
+  }
+  function append(items){
+    items=items||1;
+    for(var i=0;i<items;i++){count+=1;var p=document.createElement('p');p.textContent='新增输出 '+count+' · 正在生成正文与工具调用';flow.append(p)}
+    scroll.scrollTop=scroll.scrollHeight;
+  }
+  function measure(){
+    var a=anchor.getBoundingClientRect(),panel=document.querySelector('[role=dialog]'),p=panel?panel.getBoundingClientRect():null,t=trigger.getBoundingClientRect();
+    return {anchorTop:a.top,anchorLeft:a.left,anchorBottom:a.bottom,triggerTop:t.top,
+      panel:p?{top:p.top,bottom:p.bottom,left:p.left,right:p.right,width:p.width,height:p.height}:null,
+      gap:p?a.top-p.bottom:null,scrollTop:scroll.scrollTop,scrollHeight:scroll.scrollHeight,
+      innerWidth:innerWidth,innerHeight:innerHeight};
+  }
+  function inset(){
+    // The real host expresses the frame inset as a calc(); resolve it the way
+    // the plugin's CSS max-height does, instead of parseFloat-ing the token.
+    var probe=document.createElement('div');
+    probe.style.cssText='position:absolute;left:-9999px;top:0;height:var(--dsh-frame-overlay-top)';
+    document.body.append(probe);
+    var value=probe.getBoundingClientRect().height;
+    probe.remove();
+    return value;
+  }
+  return {open:open,close:close,append:append,measure:measure,inset:inset,flow:flow,scroll:scroll,trigger:trigger,anchor:anchor};
+})();
+</script>`;
+
+for (const kind of ['context','permission','model','plus']) {
+  await test('composer popover: ' + kind + ' stays attached during output and scrolling', async () => {
+    const r = await run(`return __withIsolatedFixture(async w => {
+      const kind=${JSON.stringify(kind)},d=w.document,host=w.__host,wait=()=>new Promise(r=>w.requestAnimationFrame(r));
+      const style=d.createElement('style');style.textContent=${JSON.stringify(composerPopoverHostCss)};d.head.append(style);
+      d.documentElement.dataset.platform='darwin';
+      const composer=d.getElementById('composer');composer.setAttribute('data-composer-seat','');
+      host.append(40);await wait();await wait();
+      const anchor=host.anchor,trigger=host.trigger;
+      let panel=d.createElement('div'),backing=null,gap=8;
+      panel.textContent='选项一　选项二　选项三';
+      trigger.setAttribute('aria-expanded','true');
+      if(kind==='context'){
+        anchor.style.anchorName='--dsh-context-fixture';panel.className='ctx_panel';panel.role='dialog';panel.style.positionAnchor=anchor.style.anchorName;
+      }else if(kind==='permission'){
+        anchor.style.anchorName='--dsh-menu-trigger-fixture';panel.className='menu_list menu_portal menu_scrollable material_surface';panel.role='menu';
+        panel.style.positionAnchor=anchor.style.anchorName;panel.dataset.anchorSide='top';panel.dataset.anchorAlign='start';gap=4;
+      }else if(kind==='model'){
+        anchor.style.removeProperty('anchor-name');anchor.style.setProperty('--dsh-model-anchor','--dsh-model-fixture');
+        trigger.className='model_trigger';trigger.setAttribute('aria-haspopup','menu');panel.className='model_menu material_surface';panel.role='menu';
+        panel.style.setProperty('--dsh-model-anchor','--dsh-model-fixture');
+      }else{
+        const overlay=d.createElement('div');overlay.dataset.composerOverlay='';overlay.style.cssText='position:absolute;top:0;left:16px;right:16px;height:0';composer.append(overlay);
+        panel.dataset.triggerMenu='';panel.style.cssText='position:absolute;bottom:calc(100% + 4px);left:0;right:0;height:80px';overlay.append(panel);gap=4;
+      }
+      if(kind!=='plus')d.body.append(panel);
+      if(kind==='permission'||kind==='model'){
+        panel.dataset.menuMaterial='translucent';panel.style.setProperty('--dsh-menu-anchor','--dsh-menu-surface-fixture');
+        panel.innerHTML='<div class="material_material"></div><div style="height:90px">选项一<br>选项二<br>选项三</div>';
+        backing=d.createElement('div');backing.className='material_backing';backing.dataset.menuBacking='';backing.style.setProperty('--dsh-menu-anchor','--dsh-menu-surface-fixture');d.body.append(backing);
+      }
+      await wait();await wait();const samples=[];
+      for(let i=0;i<24;i++){
+        if(i<20)host.append(2);
+        else if(i===20)host.scroll.scrollTop=0;
+        else if(i===21)host.scroll.scrollTop=(host.scroll.scrollHeight-host.scroll.clientHeight)/2;
+        else if(i===22)host.scroll.scrollTop=host.scroll.scrollHeight;
+        else {w.frameElement.style.width='360px';w.frameElement.style.height='500px'}
+        await wait();
+        const a=(kind==='plus'?d.querySelector('[data-composer-overlay]'):kind==='model'?trigger:anchor).getBoundingClientRect(),p=panel.getBoundingClientRect();
+        const b=backing?.getBoundingClientRect();
+        samples.push({gap:a.top-p.bottom,rightDelta:a.right-p.right,top:p.top,bottom:p.bottom,left:p.left,right:p.right,
+          backing:b?{top:b.top,left:b.left,width:b.width,height:b.height}:null,width:p.width,height:p.height,viewWidth:w.innerWidth,viewHeight:w.innerHeight});
+      }
+      return {samples,gap,owned:panel.hasAttribute('data-daf-stat-position'),kind,maxHeight:w.getComputedStyle(panel).maxHeight};
+    }, ${JSON.stringify(statPopoverFixture)})`);
+    for(const s of r.samples){
+      assert.ok(Math.abs(s.gap-r.gap)<=1,kind+' drift: '+JSON.stringify(s));
+      assert.ok(s.top>=68-1 && s.bottom<=s.viewHeight-11 && s.left>=11 && s.right<=s.viewWidth-11,'popup clipped: '+JSON.stringify(s));
+      if(kind==='model')assert.ok(Math.abs(s.rightDelta)<=1,'model right alignment: '+JSON.stringify(s));
+      if(s.backing)for(const key of ['top','left','width','height'])assert.ok(Math.abs(s.backing[key]-s[key])<=1,'backing mismatch '+key+': '+JSON.stringify(s));
+    }
+    assert.equal(r.owned,kind!=='plus','only the absolute plus menu remains host-owned');
+    if(kind==='model')assert.equal(parseFloat(r.maxHeight),360,'model menu must retain its host height cap');
+  });
+}
+
+await test('stat popover: growing transcript and scroll keep an 8px gap above a stationary composer', async () => {
+  const r = await run(`return __withIsolatedFixture(async w => {
+    const host = w.__host, wait = () => new Promise(resolve => w.requestAnimationFrame(resolve));
+    host.append(40);
+    await wait(); await wait();
+    const panel = host.open(), firstTrigger = host.trigger.getBoundingClientRect().top;
+    await wait(); await wait();
+    const samples = [host.measure()];
+    for (let i = 0; i < 30; i++) {
+      host.append(1 + (i % 2));
+      await wait();
+      samples.push(host.measure());
+    }
+    await wait(); samples.push(host.measure());
+    return {samples, firstTrigger, inset:host.inset(), marked:panel.hasAttribute('data-daf-stat-position'),
+      position:w.getComputedStyle(panel).position,
+      left:panel.style.getPropertyValue('--daf-stat-left'),
+      top:panel.style.getPropertyValue('--daf-stat-top'),
+      height:panel.style.getPropertyValue('--daf-stat-height'),
+      anchorInline:host.anchor.getAttribute('style'),
+      anchorName:host.anchor.style.anchorName,
+      styleCount:w.document.querySelectorAll('style[data-plugin-css="dsh-anthropic-fonts-stat-position"]').length};
+  }, ${JSON.stringify(statPopoverFixture)})`);
+  assert.equal(r.position, 'fixed');
+  assert.equal(r.anchorName, '--dsh-stat-fixture', 'host anchor-name must be inline: ' + r.anchorInline);
+  assert.ok(Math.abs(r.inset - 68) <= 0.5, 'the host calc inset must resolve to 68px, got ' + r.inset);
+  assert.ok(r.samples.length >= 30, 'must sample real frames');
+  for (const s of r.samples) {
+    assert.ok(s.panel, 'panel disappeared: ' + JSON.stringify(s));
+    assert.ok(Math.abs(s.gap - 8) <= 1, 'gap must stay 8px: ' + JSON.stringify(s));
+    assert.ok(Math.abs(s.triggerTop - r.firstTrigger) <= 1, 'sticky composer trigger moved: ' + JSON.stringify(s));
+    assert.ok(s.panel.top >= r.inset - 1, 'panel crossed the resolved calc inset: ' + JSON.stringify(s));
+    assert.ok(s.panel.bottom <= s.innerHeight - 12 + 1, 'panel bottom left the window: ' + JSON.stringify(s));
+    assert.ok(s.panel.left >= 12 - 1 && s.panel.right <= s.innerWidth - 12 + 1, 'panel left the horizontal window inset: ' + JSON.stringify(s));
+  }
+  assert.ok(r.samples.at(-1).scrollTop > 0, 'the transcript must actually scroll');
+  assert.equal(r.marked, true, 'an open composer usage dialog must become owned');
+  assert.equal(r.styleCount, 1, 'exactly one owned positioning stylesheet');
+  assert.ok(r.left && r.top && r.height, 'geometry variables must be set');
+});
+
+await test('stat popover: manual scroll and a moving anchor stay attached without inherited offsets', async () => {
+  const r = await run(`return __withIsolatedFixture(async w => {
+    const host = w.__host, wait = () => new Promise(resolve => w.requestAnimationFrame(resolve));
+    host.append(40);
+    await wait(); await wait();
+    const panel = host.open();
+    await wait(); await wait();
+    const max = host.scroll.scrollHeight - host.scroll.clientHeight;
+    const scrolls = [];
+    for (const fraction of [1, 0.75, 0.5, 0.25, 0, 0.5, 1]) {
+      host.scroll.scrollTop = Math.round(max * fraction);
+      await wait();
+      scrolls.push({fraction, measure:host.measure()});
+    }
+    host.anchor.style.transform = 'translate(24px,-40px)';
+    await wait(); await wait();
+    const moved = host.measure();
+    host.anchor.style.transform = 'none';
+    await wait(); await wait();
+    const base = host.anchor.getBoundingClientRect().top;
+    host.anchor.style.transform = 'translate(24px,' + (110 - base) + 'px)';
+    await wait(); await wait();
+    const flipped = host.measure();
+    return {scrolls, moved, flipped, scrollMax:max, inset:host.inset(), position:w.getComputedStyle(panel).position,
+      marked:panel.hasAttribute('data-daf-stat-position')};
+  }, ${JSON.stringify(statPopoverFixture)})`);
+  assert.equal(r.marked, true);
+  assert.ok(r.scrollMax > 0, 'fixture must be scrollable');
+  assert.ok(Math.abs(r.inset - 68) <= 0.5, 'the host calc inset must resolve to 68px, got ' + r.inset);
+  for (const s of r.scrolls) {
+    assert.ok(Math.abs(s.measure.gap - 8) <= 1, 'scroll position changed the gap: ' + JSON.stringify(s));
+    assert.ok(s.measure.panel.top >= r.inset - 1 && s.measure.panel.bottom <= s.measure.innerHeight - 12 + 1, 'scroll position clipped the panel: ' + JSON.stringify(s));
+  }
+  assert.ok(Math.abs(r.moved.gap - 8) <= 1, 'moved anchor lost its gap: ' + JSON.stringify(r.moved));
+  assert.ok(Math.abs(r.moved.panel.left - r.moved.anchorLeft) <= 1, 'panel did not follow a horizontally moved anchor: ' + JSON.stringify(r.moved));
+  assert.ok(Math.abs((r.flipped.panel.top - r.flipped.anchorBottom) - 8) <= 1, 'panel did not flip below a high anchor: ' + JSON.stringify(r.flipped));
+  assert.ok(r.flipped.panel.bottom <= r.flipped.innerHeight - 12 + 1, 'flipped panel left the window: ' + JSON.stringify(r.flipped));
+});
+
+await test('stat popover: small viewport keeps the panel inside the window and scrollable', async () => {
+  const r = await run(`return __withIsolatedFixture(async w => {
+    const host = w.__host, wait = () => new Promise(resolve => w.requestAnimationFrame(resolve));
+    host.append(40);
+    await wait(); await wait();
+    const panel = host.open();
+    await wait(); await wait();
+    w.frameElement.style.width = '360px';
+    w.frameElement.style.height = '360px';
+    await wait(); await wait(); await new Promise(resolve => w.setTimeout(resolve, 60));
+    const measure = host.measure(), style = w.getComputedStyle(panel);
+    return {measure, position:style.position, overflowY:style.overflowY, maxHeight:style.maxHeight,
+      heightVar:panel.style.getPropertyValue('--daf-stat-height'), inset:host.inset(),
+      innerWidth:measure.innerWidth, innerHeight:measure.innerHeight,
+      marked:panel.hasAttribute('data-daf-stat-position')};
+  }, ${JSON.stringify(statPopoverFixture)})`);
+  assert.equal(r.marked, true);
+  assert.equal(r.position, 'fixed');
+  assert.equal(r.overflowY, 'auto', 'an over-tall panel must scroll its content');
+  assert.ok(r.measure.panel, 'panel missing after resize');
+  assert.ok(r.measure.panel.left >= 12 - 1, 'small viewport clipped the left edge: ' + JSON.stringify(r.measure));
+  assert.ok(r.measure.panel.right <= r.innerWidth - 12 + 1, 'small viewport clipped the right edge: ' + JSON.stringify(r.measure));
+  assert.ok(Math.abs(r.inset - 68) <= 0.5, 'the host calc inset must resolve to 68px, got ' + r.inset);
+  assert.ok(r.measure.panel.top >= r.inset - 1, 'small viewport crossed the resolved calc inset: ' + JSON.stringify(r.measure));
+  assert.ok(r.measure.panel.bottom <= r.innerHeight - 12 + 1, 'small viewport clipped the bottom edge: ' + JSON.stringify(r.measure));
+  const expectedMax = r.innerHeight - 12 - r.inset;
+  assert.ok(Math.abs(Number.parseFloat(r.heightVar) - (r.innerHeight - 12)) <= 1, 'height variable must track the visual viewport: ' + r.heightVar);
+  assert.ok(Math.abs(Number.parseFloat(r.maxHeight) - expectedMax) <= 1, 'max-height must resolve the calc inset: ' + r.maxHeight + ' vs ' + expectedMax);
+});
+
+await test('stat popover: all three usage surfaces are owned and unrelated dialogs stay untouched', async () => {
+  const r = await run(`return __withIsolatedFixture(async w => {
+    const host = w.__host, wait = () => new Promise(resolve => w.requestAnimationFrame(resolve));
+    const owned = host.open();
+    await wait();
+    const d = w.document;
+    function make(role, anchorName, inner) {
+      const el = d.createElement('div');
+      el.className = 'panel';
+      if (role !== null) el.setAttribute('role', role);
+      if (anchorName !== null) el.style.positionAnchor = anchorName;
+      el.innerHTML = inner;
+      d.body.append(el);
+      return el;
+    }
+    const turnUsage = make('dialog', '--dsh-stat-fixture', '<dl data-turn-usage-details><dt>a</dt><dd>1</dd></dl>');
+    const sessionDetails = make('dialog', '--dsh-stat-fixture', '<dl data-session-stats-details><dt>b</dt><dd>2</dd></dl>');
+    const sessionUsage = make('dialog', '--dsh-stat-fixture', '<dl data-session-stats-usage><dt>c</dt><dd>3</dd></dl>');
+    const plain = make('dialog', null, '<dl data-session-stats-usage><dt>d</dt><dd>4</dd></dl>');
+    const otherAnchor = make('dialog', '--other-anchor', '<dl data-session-stats-usage><dt>e</dt><dd>5</dd></dl>');
+    const wrongContent = make('dialog', '--dsh-stat-fixture', '<div>not a usage surface</div>');
+    const notDialog = make(null, '--dsh-stat-fixture', '<dl data-session-stats-usage><dt>f</dt><dd>6</dd></dl>');
+    await wait(); await wait();
+    const snapshot = el => ({marker:el.hasAttribute('data-daf-stat-position'),
+      vars:['--daf-stat-left','--daf-stat-top','--daf-stat-height'].map(key => el.style.getPropertyValue(key))});
+    return {owned:snapshot(owned), turnUsage:snapshot(turnUsage), sessionDetails:snapshot(sessionDetails),
+      sessionUsage:snapshot(sessionUsage), plain:snapshot(plain), otherAnchor:snapshot(otherAnchor),
+      wrongContent:snapshot(wrongContent), notDialog:snapshot(notDialog),
+      markers:d.querySelectorAll('[data-daf-stat-position]').length};
+  }, ${JSON.stringify(statPopoverFixture)})`);
+  for (const key of ['owned', 'turnUsage', 'sessionDetails', 'sessionUsage']) {
+    assert.equal(r[key].marker, true, key + ' must be owned');
+    assert.ok(r[key].vars.every(value => /px$/.test(value)), key + ' must receive geometry variables: ' + JSON.stringify(r[key]));
+  }
+  for (const key of ['plain', 'otherAnchor', 'wrongContent', 'notDialog']) {
+    assert.equal(r[key].marker, false, key + ' must not be owned');
+    assert.deepEqual(r[key].vars, ['', '', ''], key + ' must not receive geometry variables');
+  }
+  assert.equal(r.markers, 4, 'only the composer usage and three recognized usage dialogs are owned');
+});
+
+await test('stat popover: growing content scrolls inside bounds and detached owners are released', async () => {
+  const r = await run(`return __withIsolatedFixture(async w => {
+    const host = w.__host, wait = () => new Promise(resolve => w.requestAnimationFrame(resolve));
+    host.append(40);
+    const panel = host.open();
+    await wait(); await wait();
+    const initial = host.measure();
+    const dl = panel.querySelector('dl');
+    dl.insertAdjacentHTML('beforeend','<dt>缓存写入</dt><dd>1,234,567 tok</dd>');
+    await wait(); await wait();
+    const grown = host.measure();
+    for (let i=0;i<40;i++) dl.insertAdjacentHTML('beforeend','<dt>额外明细</dt><dd>1,234,567 tok</dd>');
+    await wait(); await wait();
+    const tall = host.measure(), overflow = panel.scrollHeight > panel.clientHeight;
+    panel.scrollTop = panel.scrollHeight;
+    const internalScroll = panel.scrollTop;
+    panel.remove();
+    await wait(); await wait();
+    const removedClean = !panel.hasAttribute('data-daf-stat-position') && panel.style.getPropertyValue('--daf-stat-top') === '';
+    const reopened = host.open();
+    await wait(); await wait();
+    host.anchor.remove();
+    await wait(); await wait();
+    const orphanClean = !reopened.hasAttribute('data-daf-stat-position') && reopened.style.getPropertyValue('--daf-stat-top') === '';
+    return {initial,grown,tall,overflow,internalScroll,removedClean,orphanClean,inset:host.inset()};
+  }, ${JSON.stringify(statPopoverFixture)})`);
+  assert.ok(r.grown.panel.height > r.initial.panel.height);
+  assert.ok(Math.abs(r.grown.gap - 8) <= 1, JSON.stringify(r.grown));
+  assert.ok(r.tall.panel.top >= r.inset - 1 && r.tall.panel.bottom <= r.tall.innerHeight - 11, JSON.stringify(r.tall));
+  assert.ok(r.overflow && r.internalScroll > 0, 'over-tall content must remain scrollable');
+  assert.ok(r.removedClean && r.orphanClean, 'removed panel and missing anchor must release ownership');
+});
+
+await test('stat popover: dispose restores inline variables, marker and owned stylesheet', async () => {
+  const r = await run(`return __withIsolatedFixture(async w => {
+    const host = w.__host, wait = () => new Promise(resolve => w.requestAnimationFrame(resolve));
+    const panel = host.open({priorVars:{'--daf-stat-left':'7px','--daf-stat-top':'9px'}});
+    await wait(); await wait();
+    const before = {marker:panel.hasAttribute('data-daf-stat-position'),
+      left:panel.style.getPropertyValue('--daf-stat-left'), top:panel.style.getPropertyValue('--daf-stat-top'),
+      height:panel.style.getPropertyValue('--daf-stat-height'), position:w.getComputedStyle(panel).position,
+      styles:w.document.querySelectorAll('style[data-plugin-css="dsh-anthropic-fonts-stat-position"]').length,
+      gap:host.measure().gap};
+    w.__disposers.at(-1)();
+    await wait(); await wait(); await new Promise(resolve => w.setTimeout(resolve, 60));
+    const after = {marker:panel.hasAttribute('data-daf-stat-position'),
+      left:panel.style.getPropertyValue('--daf-stat-left'), top:panel.style.getPropertyValue('--daf-stat-top'),
+      height:panel.style.getPropertyValue('--daf-stat-height'), position:w.getComputedStyle(panel).position,
+      styles:w.document.querySelectorAll('style[data-plugin-css="dsh-anthropic-fonts-stat-position"]').length,
+      plugin:typeof w.__dshAnthropicFonts};
+    host.anchor.style.transform = 'translate(20px,-60px)';
+    await wait(); await wait();
+    const moved = {marker:panel.hasAttribute('data-daf-stat-position'),
+      left:panel.style.getPropertyValue('--daf-stat-left'), top:panel.style.getPropertyValue('--daf-stat-top')};
+    return {before, after, moved, anchorName:panel.style.positionAnchor};
+  }, ${JSON.stringify(statPopoverFixture)})`);
+  assert.equal(r.before.marker, true);
+  assert.equal(r.before.styles, 1);
+  assert.notEqual(r.before.left, '7px', 'live geometry must override the saved value');
+  assert.notEqual(r.before.top, '9px', 'live geometry must override the saved value');
+  assert.ok(Math.abs(r.before.gap - 8) <= 1);
+  assert.equal(r.after.marker, false);
+  assert.equal(r.after.left, '7px', 'saved inline variable must be restored');
+  assert.equal(r.after.top, '9px', 'saved inline variable must be restored');
+  assert.equal(r.after.height, '', 'owned inline variable must be removed');
+  assert.equal(r.after.styles, 0, 'owned stylesheet must be removed');
+  assert.equal(r.after.plugin, 'undefined');
+  assert.equal(r.anchorName, '--dsh-stat-fixture', 'host position-anchor must be preserved');
+  assert.deepEqual(r.moved, {marker:false, left:'7px', top:'9px'}, 'a disposed instance must stop tracking');
+});
+
+await test('stat popover: hot replacement keeps a single owned positioning stylesheet', async () => {
+  const r = await run(`return __withIsolatedFixture(async w => {
+    const host = w.__host, wait = () => new Promise(resolve => w.requestAnimationFrame(resolve));
+    const panel = host.open();
+    await wait(); await wait();
+    const initial = {styles:w.document.querySelectorAll('style[data-plugin-css="dsh-anthropic-fonts-stat-position"]').length,
+      marker:panel.hasAttribute('data-daf-stat-position'), gap:host.measure().gap, disposers:w.__disposers.length};
+    const script = w.document.createElement('script');
+    script.textContent = ${JSON.stringify(clientSource)};
+    w.document.body.append(script);
+    script.remove();
+    await wait(); await wait(); await new Promise(resolve => w.setTimeout(resolve, 60));
+    const hot = {styles:w.document.querySelectorAll('style[data-plugin-css="dsh-anthropic-fonts-stat-position"]').length,
+      marker:panel.hasAttribute('data-daf-stat-position'), gap:host.measure().gap,
+      disposers:w.__disposers.length, plugin:!!w.__dshAnthropicFonts};
+    w.__disposers.at(-1)();
+    await wait();
+    const disposed = {styles:w.document.querySelectorAll('style[data-plugin-css="dsh-anthropic-fonts-stat-position"]').length,
+      marker:panel.hasAttribute('data-daf-stat-position')};
+    return {initial, hot, disposed};
+  }, ${JSON.stringify(statPopoverFixture)})`);
+  assert.equal(r.initial.styles, 1);
+  assert.equal(r.initial.marker, true);
+  assert.ok(Math.abs(r.initial.gap - 8) <= 1);
+  assert.equal(r.hot.styles, 1, 'hot replacement must not duplicate owned styles');
+  assert.equal(r.hot.marker, true, 'an open panel must be re-owned after hot replacement');
+  assert.ok(Math.abs(r.hot.gap - 8) <= 1, 'hot replacement must reposition the open panel');
+  assert.equal(r.hot.plugin, true);
+  assert.equal(r.hot.disposers, r.initial.disposers + 1, 'the replacement must register its own disposer');
+  assert.deepEqual({styles:r.disposed.styles, marker:r.disposed.marker}, {styles:0, marker:false});
+});
+
 await test('a blank session still animates its first newly generated process chain', async () => {
   const r=await run(`return __withIsolatedFixture(async w=>{
     const d=w.document,flush=()=>new Promise(r=>w.queueMicrotask(()=>w.queueMicrotask(r)));
@@ -560,7 +1016,7 @@ await test('returning to a session hydrates a previously seen live body mounted 
 
 await test('final local file link conversion retains the response while the final tail fades', async () => {
   const fixture = JSON.parse(await readFile(new URL('./host-completion-snapshots.json', import.meta.url), 'utf8'));
-  for (const item of fixture.cases) for (const phase of ['settled', 'partial']) {
+  for (const item of fixture.cases) for (const phase of ['settled', 'partial', 'queued']) {
     const result = await run(`return __withIsolatedFixture(async w => {
       const d=w.document, item=${JSON.stringify(item)}, phase=${JSON.stringify(phase)};
       const flush=()=>new Promise(r=>w.queueMicrotask(()=>w.queueMicrotask(r)));
@@ -581,7 +1037,7 @@ await test('final local file link conversion retains the response while the fina
       }
       if(phase==='partial'){
         const until=w.performance.now()+4000;
-        while(w.performance.now()<until){const r=read();if(r.levels[50]>0&&r.levels[50]<15&&r.levels.at(-1)===0)break;await new Promise(w.requestAnimationFrame)}
+        while(w.performance.now()<until){const r=read();if(r.levels[50]>0&&r.levels[50]<15)break;await new Promise(w.requestAnimationFrame)}
       }
       const before=read();root.innerHTML=item.after;root.removeAttribute('data-streaming');await flush();
       const after=read(),frames=[after];
@@ -597,7 +1053,10 @@ await test('final local file link conversion retains the response while the fina
     const retained=result.before.levels.filter((_,i)=>i<at||i>=at+removed.length);
     assert.ok(result.after.levels.slice(0,retained.length).every((x,i)=>x>=retained[i]),item.id+' '+phase+': retained text replayed');
     assert.ok(result.after.levels.slice(0,retained.length).every((x,i)=>retained[i]!==0||x<15),'queued text must not flash fully visible');
-    if(phase==='partial')assert.ok(retained.some(x=>x>0&&x<15)&&retained.includes(0),'must observe real partial and queued text');
+    // Tall bursts now fade together; queued and partially painted conversion
+    // are separate states rather than requiring a multi-line invisible tail.
+    if(phase==='partial')assert.ok(retained.some(x=>x>0&&x<15),'must observe real partial text');
+    if(phase==='queued')assert.ok(retained.includes(0),'must observe real queued text');
     if(item.id!=='full-control')assert.ok(result.after.levels.slice(retained.length).every(x=>x===0),'final tail must start queued');
     for(let f=1;f<result.frames.length;f++)assert.ok(result.frames[f].levels.every((x,i)=>x>=result.frames[f-1].levels[i]),'brightness must never go backwards');
     assert.ok(result.frames.at(-1).levels.every(x=>x===15),'final queue must drain');

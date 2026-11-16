@@ -1,0 +1,1126 @@
+/* Host CSS module snapshot: ui-conversation/src/client/skeleton/ContextMeter.module.css; local classes prefixed ctx_ */
+/* Context-occupancy control below the composer plus its click-open breakdown
+   panel (menu surface: elevation-prominent). */
+
+.ctx_root {
+  display: inline-flex;
+  flex: none;
+}
+
+.ctx_trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 1px 8px;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font-family: inherit;
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  font-variant-numeric: tabular-nums;
+  line-height: calc(20px + var(--dsh-content-font-delta-secondary, 0px));
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ctx_trigger[aria-expanded='true'] {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+}
+
+@media (hover: hover) {
+  .ctx_trigger:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-secondary);
+  }
+}
+
+.ctx_track {
+  fill: none;
+  stroke: var(--dsw-alias-border-l3);
+  stroke-width: 2;
+}
+
+.ctx_fill {
+  fill: none;
+  stroke: var(--dsw-alias-label-tertiary);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.ctx_panel {
+  position: fixed;
+  z-index: 1100;
+  box-sizing: border-box;
+  width: min(264px, calc(100vw - 24px));
+  padding: 12px;
+  border: 0;
+  border-radius: var(--dsw-radius-lg);
+  background: var(--dsw-specific-menu);
+  backdrop-filter: var(--dsw-menu-backdrop-filter);
+  --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
+  box-shadow: var(--dsw-elevation-prominent);
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-secondary);
+  cursor: default;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 12px - max(12px, var(--dsh-frame-overlay-top, 12px)));
+  overflow-x: hidden;
+  overflow-y: auto;
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+  position-area: none;
+  top: max(12px, var(--dsh-frame-overlay-top, 12px));
+  bottom: max(12px, calc(anchor(top) + 8px));
+  left: max(12px, anchor(left));
+  right: 12px;
+  position-try-fallbacks: --dsh-context-window, --dsh-context-opposite, --dsh-context-wide-opposite, --dsh-context-tall, --dsh-context-viewport;
+  align-self: end;
+  justify-self: start;
+  height: fit-content;
+  min-height: 0;
+  margin: 0;
+}
+
+.ctx_header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ctx_figures {
+  margin-left: auto;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-primary);
+}
+
+.ctx_percent {
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+}
+
+.ctx_headline {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* The headline brackets the reading, so the side a locale leaves empty must
+   drop out of the flex row rather than spend a gap. */
+.ctx_headline:empty {
+  display: none;
+}
+
+.ctx_bar {
+  display: flex;
+  gap: 1px;
+  margin: 10px 0 12px;
+  height: 4px;
+  border-radius: 999px;
+  corner-shape: round;
+  background: var(--dsw-alias-interactive-bg-hover);
+  overflow: hidden;
+}
+
+.ctx_segment {
+  flex: none;
+  min-width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--meter-tint, var(--dsw-alias-label-tertiary));
+}
+
+.ctx_swatch {
+  display: inline-block;
+  margin-right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--meter-tint);
+  vertical-align: baseline;
+}
+
+.ctx_colorSystem {
+  --meter-tint: var(--dsw-alias-chart-system);
+}
+
+.ctx_colorTools {
+  --meter-tint: var(--dsw-alias-chart-tools);
+}
+
+.ctx_colorMessages {
+  --meter-tint: var(--dsw-alias-chart-messages);
+}
+
+.ctx_rows {
+  margin: 6px 0 0;
+}
+
+.ctx_row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+}
+
+.ctx_row dt {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.ctx_row dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-primary);
+}
+
+@position-try --dsh-context-window {
+  position-area: none;
+  top: max(12px, var(--dsh-frame-overlay-top, 12px));
+  bottom: max(12px, calc(anchor(top) + 8px));
+  left: 12px;
+  right: 12px;
+  margin: 0;
+  align-self: safe end;
+  justify-self: safe end;
+}
+
+@position-try --dsh-context-opposite {
+  top: max(12px, calc(anchor(bottom) + 8px));
+  bottom: 12px;
+  align-self: start;
+}
+
+@position-try --dsh-context-wide-opposite {
+  top: max(12px, calc(anchor(bottom) + 8px));
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  align-self: start;
+  justify-self: safe end;
+}
+
+@position-try --dsh-context-tall {
+  position-area: none;
+  top: max(12px, var(--dsh-frame-overlay-top, 12px));
+  bottom: 12px;
+  left: max(12px, anchor(left));
+  right: 12px;
+  margin: 0;
+  align-self: safe start;
+  justify-self: start;
+}
+
+@position-try --dsh-context-viewport {
+  position-area: none;
+  inset: max(12px, var(--dsh-frame-overlay-top, 12px)) 12px 12px;
+  margin: 0;
+  align-self: safe start;
+  justify-self: safe end;
+}
+
+/* Host CSS module snapshot: ui-primitives/src/Menu.module.css; local classes prefixed menu_ */
+.menu_root {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Compact translucent dropdown card shared by feature menus. */
+.menu_list,
+.menu_submenu {
+  /* min-widths below are the design's outer card widths — include the pad. */
+  box-sizing: border-box;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 0;
+  --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
+  box-shadow: var(--dsw-elevation-prominent);
+  /* Elevated surface: the scrollbar thumb takes the l2 elevation tokens. The
+     declaration sits on the card rather than on `.menu_scrollable .menu_viewport`
+     because the elevation is a property of this surface, and the custom
+     properties inherit down to whichever descendant actually scrolls (see
+     ui-theme styles/scrollbar.menu_css for the rebinding contract). */
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+/* Primary cards grow with their content between compact and readable bounds. */
+.menu_list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  min-width: min(144px, calc(100vw - 24px));
+  max-width: min(360px, calc(100vw - 24px));
+}
+
+/* Legacy slots can render no rows; keep empty context popups out of layout. */
+.menu_list[data-context-menu]:not(:has([role='menuitem'])) {
+  display: none;
+}
+
+/* Every candidate reserves layout-window margins while browser zoom moves the page. */
+.menu_portal {
+  --dsh-menu-window-top: max(12px, var(--dsh-frame-overlay-top, 12px));
+  position: fixed;
+  position-area: none;
+  top: max(var(--dsh-menu-window-top), calc(anchor(bottom) + 4px));
+  bottom: 12px;
+  left: max(12px, anchor(left));
+  right: 12px;
+  justify-self: start;
+  align-self: start;
+  margin: 0;
+  position-try-fallbacks: --dsh-menu-wide-below, --dsh-menu-above, --dsh-menu-wide-above, --dsh-menu-window, --dsh-menu-wide-window;
+  width: max-content;
+  height: fit-content;
+  z-index: 1100;
+}
+.menu_portal[data-anchor-side='top'] {
+  top: var(--dsh-menu-window-top);
+  bottom: max(12px, calc(anchor(top) + 4px));
+  align-self: end;
+  position-try-fallbacks: --dsh-menu-wide-above, --dsh-menu-below, --dsh-menu-wide-below, --dsh-menu-window, --dsh-menu-wide-window;
+}
+.menu_portal[data-anchor-side='right'] {
+  top: max(var(--dsh-menu-window-top), anchor(top));
+  bottom: 12px;
+  left: max(12px, calc(anchor(right) + 4px));
+  right: 12px;
+  position-try-fallbacks: --dsh-menu-left, --dsh-menu-wide-below, --dsh-menu-window, --dsh-menu-wide-window;
+}
+.menu_portal[data-anchor-align='end']:not([data-anchor-side='right']) {
+  left: 12px;
+  right: max(12px, anchor(right));
+  justify-self: end;
+  --dsh-menu-wide-align: start;
+}
+.menu_portal[data-match-anchor-width] { min-width: min(anchor-size(width), calc(100vw - 24px)); }
+.menu_portal[data-context-menu] { --dsh-menu-window-top: 12px; }
+
+@position-try --dsh-menu-below {
+  top: max(var(--dsh-menu-window-top), calc(anchor(bottom) + 4px));
+  bottom: 12px;
+  align-self: start;
+}
+@position-try --dsh-menu-above {
+  top: var(--dsh-menu-window-top);
+  bottom: max(12px, calc(anchor(top) + 4px));
+  align-self: end;
+}
+@position-try --dsh-menu-wide-below {
+  top: max(var(--dsh-menu-window-top), calc(anchor(bottom) + 4px));
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  align-self: start;
+  justify-self: safe var(--dsh-menu-wide-align, end);
+}
+@position-try --dsh-menu-wide-above {
+  top: var(--dsh-menu-window-top);
+  bottom: max(12px, calc(anchor(top) + 4px));
+  left: 12px;
+  right: 12px;
+  align-self: end;
+  justify-self: safe var(--dsh-menu-wide-align, end);
+}
+@position-try --dsh-menu-left {
+  left: 12px;
+  right: max(12px, calc(anchor(left) + 4px));
+  justify-self: end;
+}
+/* A tall card keeps its trigger alignment before horizontal clamping is needed. */
+@position-try --dsh-menu-window {
+  top: var(--dsh-menu-window-top);
+  bottom: 12px;
+  align-self: safe start;
+}
+
+@position-try --dsh-menu-wide-window {
+  top: var(--dsh-menu-window-top);
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  align-self: safe start;
+  justify-self: safe var(--dsh-menu-wide-align, end);
+}
+
+/* Open above the anchor (empty-state workspace chip: figma 122:9481). */
+.menu_sideTop {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.menu_alignEnd {
+  left: auto;
+  right: 0;
+}
+
+/* Tall lists scroll within the layout viewport, independently of pinch zoom.
+ * Child cards use their own body portal, so a scrolling parent never clips them. */
+.menu_scrollable {
+  max-height: calc(100vh - 12px - max(12px, var(--dsh-frame-overlay-top, 12px)));
+  max-height: calc(100dvh - 12px - max(12px, var(--dsh-frame-overlay-top, 12px)));
+}
+
+.menu_viewport {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.menu_scrollable .menu_viewport {
+  overflow-y: auto;
+}
+
+/* Pinned rows below the scroll region; l2 hairline (l1 is near-invisible on
+ * the menu surface) mirrors the .menu_separator spacing. */
+.menu_footer {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  margin-top: 3px;
+  padding-top: 3px;
+  border-top: 0.5px solid var(--dsw-alias-border-l2);
+}
+
+.menu_list[data-context-menu] .menu_footer:has(> .menu_separator:first-child) {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.menu_itemWrap {
+  position: relative;
+}
+
+/* Menu cell: compact text, icon, and selection spacing. */
+.menu_item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-primary);
+  text-align: left;
+}
+
+@media (hover: hover) {
+  .menu_item:hover:not(:disabled):not([aria-disabled='true']) {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+/* Arrow navigation moves real focus, so the row the keyboard is on carries the
+   same fill the pointer gets: the fill is the row's focus indication, and the
+   browser's default ring would double it. */
+.menu_item:focus-visible:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+  outline: none;
+}
+
+.menu_denseList .menu_item {
+  min-height: 30px;
+  padding-block: 4px;
+}
+
+.menu_denseList .menu_label {
+  padding-block: 3px;
+}
+
+.menu_list.menu_compactList,
+.menu_submenu.menu_compactList {
+  min-width: min(156px, calc(100vw - 24px));
+  padding: 4px;
+}
+
+.menu_compactList .menu_item {
+  min-height: 24px;
+  gap: 5px;
+  padding: 2px 6px;
+  border-radius: var(--dsw-radius-sm);
+  font-size: 11px;
+  line-height: 17px;
+}
+
+.menu_compactList .menu_itemIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.menu_compactList .menu_separator {
+  margin: 2px 6px;
+}
+
+.menu_compactList .menu_label {
+  padding: 3px 6px;
+  font-size: 10px;
+  line-height: 15px;
+}
+
+.menu_item:disabled,
+.menu_item[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.menu_itemIcon {
+  display: inline-flex;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  align-items: center;
+  justify-content: center;
+  color: var(--dsw-alias-menu-icon);
+}
+
+.menu_itemIcon svg,
+.menu_check {
+  width: 14px;
+  height: 14px;
+}
+
+.menu_compactList .menu_itemIcon svg,
+.menu_compactList .menu_check {
+  width: 12px;
+  height: 12px;
+}
+
+.menu_itemLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu_shortcut {
+  flex: none;
+  margin-inline-start: auto;
+}
+
+.menu_shortcut .menu_shortcutKeys {
+  color: var(--dsw-alias-label-caption);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+@media (pointer: coarse) {
+  html:not([data-input-modality='keyboard']) .menu_shortcut {
+    display: none;
+  }
+}
+
+.menu_check {
+  flex: none;
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Selected cell keeps the plain fill (marker is the trailing check); the
+ * class remains as a hook for owner-side emphasis. */
+.menu_selected {
+  background: transparent;
+}
+
+/* Fill-mode selection: the row holds the hover fill instead of a check. */
+.menu_selectedFill {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+/* Destructive row: error text/icon, danger hover fill. */
+.menu_danger {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.menu_danger .menu_itemIcon {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+@media (hover: hover) {
+  .menu_danger:hover:not(:disabled):not([aria-disabled='true']) {
+    background: var(--dsw-alias-interactive-bg-hover-danger);
+  }
+}
+
+.menu_danger:focus-visible:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover-danger);
+  outline: none;
+}
+
+/* Heading row: non-interactive small grey text, padding aligned with items. */
+.menu_label {
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* Separator endpoints align with the row content. The l2 stroke stays visible
+ * on the menu surface. */
+.menu_separator {
+  height: 0.5px;
+  margin: 3px 8px;
+  background: var(--dsw-alias-border-l2);
+}
+
+/* A data separator directly followed by a row that starts a group draws one
+ * line, not two; a group start on the list's first row draws none. */
+.menu_separator + .menu_separator,
+.menu_separator + .menu_itemWrap > .menu_separator:first-child,
+.menu_itemWrap:first-child > .menu_separator:first-child {
+  display: none;
+}
+
+/* A legacy outlet following structured rows is not the beginning of the menu. */
+.menu_list[data-context-menu] .menu_viewport > .menu_itemWrap ~ [data-slot] .menu_itemWrap:first-child > .menu_separator:first-child {
+  display: block;
+}
+
+/* The parent card's anchor for an open child card: an unscrolled box matching the
+ * card. WebKit does not re-resolve anchors on the anchor-positioned card itself
+ * after it settles, and resolves rows inside the scrolling list without their
+ * scroll offset; a descendant box avoids both. */
+.menu_submenuAnchor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Child cards stay mounted while switching between side and single-panel layouts.
+ * Both layouts use the parent card's anchor box as the default anchor, which
+ * browsers track through movement and zoom. JavaScript selects the layout and
+ * supplies the active row's offset within the parent card and the child card's
+ * natural height. */
+.menu_submenu {
+  --dsh-menu-window-top: max(12px, var(--dsh-frame-overlay-top, 12px));
+  position: fixed;
+  position-anchor: var(--dsh-submenu-parent);
+  position-visibility: always;
+  margin: 0;
+  z-index: 1101;
+  width: max-content;
+  min-width: min(163px, calc(100vw - 24px));
+  max-width: min(360px, calc(100vw - 24px));
+  max-height: calc(100dvh - 12px - var(--dsh-menu-window-top));
+}
+.menu_submenu[data-contextual] { --dsh-menu-window-top: 12px; }
+
+/* Side card: beside the parent card with a 4px gap, top edge on the active row,
+ * moved up when its height does not fit below the row. The only placement
+ * fallback is the left side. */
+.menu_submenu[data-submenu-layout='side'] {
+  top: max(var(--dsh-menu-window-top), min(
+    calc(anchor(top) + var(--dsh-submenu-row-offset, 0px)),
+    calc(100dvh - 12px - var(--dsh-submenu-height, 0px))
+  ));
+  left: calc(anchor(right) + 4px);
+  right: 12px;
+  justify-self: start;
+  height: max-content;
+  position-try-fallbacks: --dsh-submenu-left;
+}
+@position-try --dsh-submenu-left {
+  left: 12px;
+  right: calc(anchor(left) + 4px);
+  justify-self: end;
+}
+
+/* Single-panel page: the child takes the parent card's place and at least its width. */
+.menu_submenu[data-submenu-layout='page'] {
+  top: max(var(--dsh-menu-window-top), anchor(top));
+  bottom: 12px;
+  left: max(12px, anchor(left));
+  right: 12px;
+  align-self: start;
+  justify-self: start;
+  height: fit-content;
+  min-width: min(anchor-size(width), calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+}
+
+/* Retain the parent's geometry and rows for placement and focus restoration. */
+.menu_parentPage {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.menu_submenu > .menu_item {
+  flex: none;
+}
+
+.menu_list[data-menu-phase='dismiss'],
+.menu_list[data-menu-phase='replace'] { pointer-events: none; }
+.menu_list[data-context-menu].menu_scrollable {
+  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
+}
+
+/* Host CSS module snapshot: ui-primitives/src/MenuSurface.module.css; local classes prefixed material_ */
+.material_surface,
+.material_backing {
+  border-radius: var(--dsw-radius-lg);
+}
+
+.material_compact {
+  border-radius: var(--dsw-radius-md);
+}
+
+:where(.material_surface) {
+  position: relative;
+}
+
+.material_surface {
+  anchor-name: var(--dsh-menu-anchor);
+  isolation: isolate;
+}
+
+/* Filtering only the background keeps nested menus and fixed overlays free of
+ * an ancestor backdrop root or a new fixed-position containing block. */
+.material_material {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--dsw-menu-surface-fill);
+  backdrop-filter: var(--dsw-menu-backdrop-filter);
+  pointer-events: none;
+}
+
+.material_backing {
+  display: none;
+}
+
+/* Chromium needs opaque pixels behind the page content to blur it over native
+ * vibrancy. Body isolation keeps this backing above the native window and below
+ * the page; CSS anchors limit it to this menu without a layout observer. */
+html[data-platform='darwin'] .material_backing {
+  display: block;
+  position: fixed;
+  position-anchor: var(--dsh-menu-anchor);
+  top: anchor(top);
+  left: anchor(left);
+  width: anchor-size(width, 0px);
+  height: anchor-size(height, 0px);
+  z-index: -1;
+  background: var(--dsw-alias-bg-base);
+  pointer-events: none;
+}
+
+/* Opacity on the container would prevent its material from blurring the page.
+ * Enter animations release their compositing layers so nested menus can blur too. */
+.material_surface[data-menu-phase='enter'] > *,
+.material_backing[data-menu-phase='enter'] { animation: dsh-context-menu-in var(--dsh-menu-enter) ease-out; }
+.material_surface[data-menu-phase='dismiss'] > *,
+.material_backing[data-menu-phase='dismiss'],
+.material_surface[data-menu-phase='replace'] > *,
+.material_backing[data-menu-phase='replace'] { animation: dsh-context-menu-out var(--dsh-menu-dismiss) ease-in both; }
+.material_surface[data-menu-phase='replace'] > *,
+.material_backing[data-menu-phase='replace'] { animation-duration: var(--dsh-menu-replace); }
+@keyframes dsh-context-menu-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dsh-context-menu-out { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .material_surface[data-menu-phase] > *, .material_backing[data-menu-phase] { animation-duration: 0ms; }
+}
+
+/* Host CSS module snapshot: ui-model-selection/src/client/ModelSelect.module.css; local classes prefixed model_ */
+.model_root {
+  position: relative;
+  min-width: 0;
+}
+
+/* Figma 313:14108 ToggleButton: 13/20 regular secondary label, 4px gap,
+   12px caption chevron; 28px chip height matches the sibling Plan /
+   Read-only selects in the same tool row. */
+.model_trigger {
+  anchor-name: var(--dsh-model-anchor);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  /* Preferred width: the composer measures this expanded seat against the
+     space the other controls leave, so the cap must not shrink with the row.
+     A row-relative cap would let the measured demand fall with the available
+     width, and the expanded text would then always fit. */
+  max-width: 360px;
+  height: 28px;
+  padding: 0 4px 0 8px;
+  border: none;
+  /* Rounded chip chrome, matching the sibling permission trigger. */
+  border-radius: var(--dsw-radius-sm);
+  outline: none;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .model_trigger:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.model_trigger:focus-visible:not([data-selection-focus]) {
+  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+}
+
+.model_trigger:disabled {
+  color: var(--dsw-alias-label-dimmed);
+  cursor: default;
+}
+
+.model_triggerLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Effort value beside the model name (mock's 'High': same 13/20/400, caption
+   tone). Adaptive priority: the huge shrink factor makes the effort absorb
+   all deficit first — it ellipsizes away to nothing before the model name
+   loses a single pixel, and the chevron stays snug throughout. */
+.model_triggerEffort {
+  flex-shrink: 1000;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-caption);
+}
+
+/* The Models glyph replaces the text when the composer row cannot fit it. */
+.model_triggerIcon {
+  display: var(--dsh-composer-model-icon-display, none);
+  flex: 0 0 auto;
+}
+
+/* The composer measures expanded row demand and owns these display variables.
+   Outside a composer, the trigger retains its text. */
+.model_triggerLabel,
+.model_triggerEffort {
+  display: var(--dsh-composer-model-text-display, block);
+}
+
+.model_chevron {
+  flex: 0 0 auto;
+  color: var(--dsw-alias-label-caption);
+  transition: transform 120ms ease;
+}
+
+.model_chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* The body portal escapes overflow ancestors. CSS anchors keep the card above
+   its trigger; layout viewport bounds do not shrink during pinch zoom. */
+.model_menu {
+  box-sizing: border-box;
+  position: fixed;
+  position-anchor: var(--dsh-model-anchor);
+  top: max(12px, var(--dsh-frame-overlay-top, 12px));
+  left: 12px;
+  /* Anchor insets stay linear because scroll compensation runs after layout. */
+  right: anchor(right);
+  bottom: calc(anchor(top) + 8px);
+  align-self: safe end;
+  justify-self: safe end;
+  margin: 0;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  /* Rows size the card up to its visible bounds; longer names ellipsize. */
+  width: fit-content;
+  height: fit-content;
+  min-width: min(240px, calc(100vw - 24px));
+  max-width: min(420px, calc(100vw - 24px));
+  max-height: min(360px, calc(100dvh - 96px));
+  overflow: hidden;
+  padding: 4px;
+  /* Surface tokens match the Menu primitive card (ui-primitives
+   * Menu.model_module.model_css) so every dropdown reads as the same material. */
+  border: 0;
+  --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
+  box-shadow: var(--dsw-elevation-prominent);
+  color: var(--dsw-alias-label-primary);
+  /* Elevated surface: the scrollbar thumb takes the l2 elevation tokens.
+     Declared here rather than on the scrolling `.model_groups` child so the
+     elevation choice sits with the surface; the custom properties inherit
+     down to whichever descendant actually scrolls (see ui-theme
+     styles/scrollbar.model_css for the rebinding contract). */
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+.model_status,
+.model_empty {
+  padding: 8px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.model_error,
+.model_warning {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 3px;
+  padding: 6px 7px;
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-interactive-bg-hover-danger);
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.model_warning {
+  background: var(--dsw-alias-bg-module-platform);
+  color: var(--dsw-alias-state-warn-label);
+}
+
+.model_retry {
+  flex: 0 0 auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.model_searchRow {
+  position: relative;
+  flex-shrink: 0;
+  margin: 2px 0 3px;
+}
+
+.model_searchRow .model_search {
+  display: flex;
+  height: auto;
+  padding: 5px 7px;
+  border: 0 solid transparent;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+}
+
+.model_searchRow .model_searchWithQuery {
+  padding-right: 34px;
+}
+
+.model_searchClear {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  corner-shape: round;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+.model_searchClear:focus-visible {
+  outline: none;
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+@media (hover: hover) {
+  .model_searchClear:hover {
+    outline: none;
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.model_searchRow .model_search:focus-within {
+  border-color: transparent;
+}
+
+.model_searchRow .model_search input {
+  padding: 0;
+  font-size: 12px;
+  line-height: normal;
+}
+
+@media (pointer: coarse) {
+  .model_searchRow .model_search input {
+    font-size: 16px;
+  }
+}
+
+.model_searchRow .model_search input::placeholder {
+  color: var(--dsw-alias-label-caption);
+}
+
+.model_groups:not([hidden]) {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.model_option {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  min-width: 100%;
+  min-height: 34px;
+  padding: 5px 7px;
+  border: none;
+  border-radius: var(--dsw-radius-md);
+  outline: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.model_option:focus-visible,
+.model_optionActive:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.model_modelOption {
+  max-width: 100%;
+}
+
+@media (hover: hover) {
+  .model_option:not(.model_modelOption):hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+/* Selection marker is the trailing check, not a fill — matches the Menu
+ * primitive's selected treatment. */
+.model_selected {
+  background: transparent;
+}
+
+.model_option:disabled {
+  color: var(--dsw-alias-label-dimmed);
+  cursor: default;
+}
+
+.model_optionCopy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.model_modelName {
+  overflow: hidden;
+  color: inherit;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model_badgedName {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  gap: 4px;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+.model_badgedNameText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.model_badge {
+  flex: none;
+}
+
+.model_check {
+  display: grid;
+  place-items: center;
+  flex: 0 0 14px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.model_check svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Two-level root cells use the same compact rhythm as the model rows. */
+.model_cell {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  min-width: 100%;
+  height: 34px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
+  text-align: left;
+  outline: none;
+}
+
+.model_cell:focus-visible {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+@media (hover: hover) {
+  .model_cell:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.model_cellLabel {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.model_cellValue {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.model_cellChevron {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  color: var(--dsw-alias-menu-icon);
+}

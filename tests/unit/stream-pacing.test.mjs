@@ -64,6 +64,9 @@ function painter() {
           setStart(node, offset) { this.startContainer = node; this.startOffset = offset },
           setEnd(node, offset) { this.endContainer = node; this.endOffset = offset },
           get collapsed() { return this.startContainer === this.endContainer && this.startOffset === this.endOffset },
+          // This scheduler double has no wrapped layout; real geometry is
+          // covered by the narrow-column browser regression.
+          getBoundingClientRect() { return { top: 0, bottom: 0 } },
         }
         ranges.add(range)
         return range

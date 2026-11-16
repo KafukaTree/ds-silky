@@ -11,6 +11,7 @@ function dispose() {
   // consumers afterwards, otherwise disposal can accidentally restart them.
   rsStop()
   scStop()
+  spStop()
   hlStop()
   // Stream owns the shared mutation observer; sfStop also disposes has-freeze.
   sfStop()
@@ -51,5 +52,6 @@ function start(ctx) {
   hfInstall()
   rsInstall()
   scInstall()
+  spInstall()
   if (ctx !== undefined && typeof ctx.effect === 'function') ctx.effect(() => dispose)
 }

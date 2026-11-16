@@ -668,6 +668,7 @@ function sfAppend(state, start, end, recordArrival = true) {
     boundary = crossedBlock || unitText.includes('\n')
     at = unitEnd
   }
+  state.measureBurst = true
   sfSeen += 1
   sfActive.add(state)
 }
@@ -904,6 +905,25 @@ function sfSyncSurfaces() {
   }
 }
 
+// A hidden burst already occupies layout height, so the host follows its end
+// before our character queue gets there. Fade a tall burst as one batch instead
+// of leaving several blank lines below the painted tail. Read only on arrival;
+// never move the transcript or compete with the host's scroll controller.
+function sfMeasureBurst(state, pending) {
+  if (!state.measureBurst) return 0
+  state.measureBurst = false
+  const first = pending?.ranges[0]
+  const last = state.spans.at(-1)?.ranges.at(-1)
+  if (!first?.startContainer?.isConnected || !last?.endContainer?.isConnected) return 0
+  const parent = first.startContainer.parentElement
+  const style = window.getComputedStyle(parent)
+  const line = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) * 1.5
+  if (last.getBoundingClientRect().bottom - first.getBoundingClientRect().top > line * 2.5) {
+    return state.arrived
+  }
+  return 0
+}
+
 function sfDrive(state, now) {
   let dt = state.lastTick === 0 ? 16 : Math.min(48, Math.max(0, now - state.lastTick))
   state.lastTick = now
@@ -912,6 +932,7 @@ function sfDrive(state, now) {
   if (backlog <= 0) { state.cursor = state.arrived; state.burstRate = SF_RATE_MAX; return }
   const pending = state.spans.find(span => span.born === Infinity)
   if (pending && sfBlocked(state, pending.start)) { state.waiting = true; return }
+  const catchUpTo = sfMeasureBurst(state, pending)
   if (state.waiting) { dt = Math.min(dt, 16); state.waiting = false }
   const clock = state.clock || state
   const upstream = clock.arrivalRate || 0.03
@@ -925,7 +946,7 @@ function sfDrive(state, now) {
   desired = Math.min(state.burstRate || SF_RATE_MAX, Math.max(SF_RATE_MIN, backlog / SF_DRAIN_MS, desired))
   if (!state.rate) state.rate = Math.min(upstream, desired)
   state.rate += (desired - state.rate) * (1 - Math.exp(-dt / SF_RATE_TAU))
-  state.cursor = Math.min(state.arrived, state.cursor + state.rate * dt)
+  state.cursor = Math.min(state.arrived, Math.max(catchUpTo, state.cursor + state.rate * dt))
   for (const range of state.provisionalRanges || []) {
     if (state.cursor >= range.start && state.cursor < range.end) state.cursor = range.end
   }
@@ -939,13 +960,14 @@ function sfDrive(state, now) {
     // The check sits on the boundary span itself, so a cursor jump that
     // crosses a whole line in one tick still cannot reveal the next line
     // before the previous one has finished fading.
-    if (span.paraStart === true && state.lastUnitBorn !== 0 &&
+    if (span.start >= catchUpTo && span.paraStart === true && state.lastUnitBorn !== 0 &&
         now < state.lastUnitBorn + SF_DURATION) {
       state.cursor = span.start
       break
     }
     if (sfBlocked(state, span.start)) {
       state.cursor = span.start
+      state.measureBurst = true
       break
     }
     span.born = now

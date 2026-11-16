@@ -8,8 +8,12 @@
        a beat after the last live row settles. */
     const HF_LIVE = '[data-streaming="true"], [data-variant="think"][data-state="running"], [data-trigger-menu], [data-context-menu], [role="menu"], [role="listbox"]'
     const HF_SETTLE_MS = 1200
-    /* Replica of the five chat gap/empty-seat rules deleted with the :has()
-       sweep. No :has() here: the point is a document with none. */
+    /* Replica of the chat gap rules deleted with the :has() sweep.
+       Empty seats and their display:contents slots already have zero natural
+       height. Never force height:0 from data-daf-empty: that marker updates
+       after the host's layout effects, so a newly populated seat would lose
+       its height during echo admission and clamp the scrollport backwards.
+       No :has() here: the point is a document with none. */
     const HF_CSS = `
 [data-daf-has-freeze] :is([data-chat-flow], [data-slot="conversation.chat.flow"]) > :not([hidden]):not([data-text-interaction-surface]):not([data-daf-empty]):not([data-chat-flow-key]:empty) ~ :not([hidden]):not([data-text-interaction-surface]):not([data-daf-empty]):not([data-chat-flow-key]:empty) {
   margin-top: var(--dsh-chat-flow-gap, 4px);
@@ -34,9 +38,6 @@
 }
 [data-daf-has-freeze] [data-chat-flow-key][data-daf-gap="44"] {
   --dsh-chat-flow-gap: calc(44px + var(--dsh-content-font-delta, 0px));
-}
-[data-daf-has-freeze] [data-chat-flow-key][data-daf-empty] {
-  height: 0;
 }
 [data-daf-has-freeze] [data-daf-header-plain] {
   min-height: 0px;

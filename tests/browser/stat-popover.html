@@ -1,0 +1,72 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>输入栏浮层 · 流式滚动回放</title>
+<style>
+:root{--dsw-radius-lg:16px;--dsw-radius-md:12px;--dsw-specific-menu:#f8f9fa;--dsw-menu-surface-fill:#f8f9fa;--dsw-alias-bg-base:#fff;--dsw-alias-border-l1:#ddd;--dsw-alias-border-l2:#ddd;--dsw-alias-label-primary:#17191d;--dsw-alias-label-secondary:#626770;--dsw-alias-label-tertiary:#868b94;--dsh-frame-top-clearance:48px;--dsh-frame-overlay-top:calc(var(--dsh-frame-top-clearance) + 20px);--dsw-elevation-prominent:0 3px 16px #0001}
+body{margin:0;font:14px system-ui}#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}header{flex:none;height:34px;display:flex;gap:12px;align-items:center}#scroll{display:flex;flex:1;flex-direction:column;min-height:0;overflow-y:auto;scrollbar-gutter:stable}#flow{flex:1 0 auto;min-height:auto;padding:20px}#composer{position:sticky;bottom:0;margin-top:auto;z-index:9;will-change:transform;overflow-anchor:none;background:#fff;padding:16px;flex:none}#card{position:relative;border:1px solid #ddd;border-radius:12px;padding:12px;margin-bottom:8px}#input{height:40px}#dock,#toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}[data-kind]{display:inline-flex}button{font:inherit;border:0;border-radius:8px;background:#f1f2f4;padding:4px 10px;cursor:pointer}[data-composer-overlay]{position:absolute;top:0;left:0;right:0;height:0}#popup[data-trigger-menu]{position:absolute;bottom:calc(100% + 4px);left:0;right:0;padding:12px;border-radius:12px;background:#f8f9fa;box-shadow:0 3px 16px #0001}
+</style><style id="host-css"></style>
+<div id="app">
+<header><button id="stream">开始输出</button><output id="status"></output></header>
+<div id="scroll" data-conversation-scroll><div id="flow"><p>模拟历史消息</p></div>
+<div id="composer" data-composer-seat>
+<div id="card" data-composer-card><div data-composer-overlay></div><div id="input">输入消息</div><div id="toolbar">
+<span data-kind="plus"><button aria-haspopup="listbox" aria-expanded="false">＋</button></span>
+<span data-kind="permission" style="anchor-name:--dsh-menu-trigger-permission"><button aria-haspopup="menu" aria-expanded="false">工作区内修改</button></span>
+<span data-kind="model" style="--dsh-model-anchor:--dsh-model-fixture"><button class="model_trigger" aria-haspopup="menu" aria-expanded="false">模型选择</button></span>
+</div></div>
+<div id="dock" data-composer-dock>
+<span data-kind="activity" style="anchor-name:--dsh-stat-activity"><button aria-haspopup="dialog" aria-expanded="false">16轮 · 42步 · 52 tok/s</button></span>
+<span data-kind="usage" style="anchor-name:--dsh-stat-usage"><button aria-haspopup="dialog" aria-expanded="false">32.4M tok · 缓存96%</button></span>
+<span data-kind="context" style="anchor-name:--dsh-context-fixture"><button aria-haspopup="dialog" aria-expanded="false">上下文 68%</button></span>
+</div></div></div></div>
+<script>window.__ModuleLoader__={load(m){m.factory(()=>{throw Error('fixture')}).apply({effect(f){f()}})}};</script>
+<script src="../../lib/client.js"></script>
+<script type="module">
+document.querySelector('#host-css').textContent=(await Promise.all(['stat-popover-host.css','composer-popover-host.css'].map(p=>fetch(p).then(r=>r.text())))).join('\n');
+document.documentElement.dataset.platform='darwin';
+const flow=document.querySelector('#flow'),scroll=document.querySelector('#scroll');
+for(let i=0;i<40;i++){const p=document.createElement('p');p.textContent='历史消息 '+i+' · 机组组合求解过程';flow.append(p)}
+scroll.scrollTop=scroll.scrollHeight;
+let active=null;
+function close(){document.querySelector('#popup')?.remove();document.querySelector('[data-menu-backing]')?.remove();active?.querySelector('button').setAttribute('aria-expanded','false');active=null}
+const content={
+activity:'<div class="title">会话统计　16轮 · 42步</div><div class="titleRule"></div><dl class="details" data-session-stats-details><dt>模型耗时</dt><dd>12m42s</dd><dt>工具耗时</dt><dd>2m15s</dd><dt>首字延迟</dt><dd>1.2s</dd><dt>生成速度</dt><dd>52 tok/s</dd></dl>',
+usage:'<div class="title">Token 用量　32,432,856 tok</div><div class="titleRule"></div><dl class="details" data-session-stats-usage><dt>缓存命中</dt><dd>96%</dd><dt>未缓存输入</dt><dd>1,167,995 tok</dd><dt>缓存读取</dt><dd>31,053,312 tok</dd><dt>输出</dt><dd>211,549 tok</dd></dl>',
+context:'<div>上下文已用　68%</div><hr><p>当前使用　87,040 tokens</p><p>上下文窗口　128,000 tokens</p>',
+permission:'<button role="menuitem">只读</button><button role="menuitem">工作区内修改 ✓</button><button role="menuitem">完全权限</button>',
+model:'<button role="menuitem">当前模型 ✓</button><button role="menuitem">其他可用模型</button>',
+plus:'<div role="listbox"><p role="option">添加文件</p><p role="option">选择命令</p></div>'};
+for(const anchor of document.querySelectorAll('[data-kind]'))anchor.querySelector('button').onclick=()=>{
+ const wasOpen=active===anchor;close();if(wasOpen)return;
+ active=anchor;anchor.querySelector('button').setAttribute('aria-expanded','true');
+ const kind=anchor.dataset.kind,panel=document.createElement('div');panel.id='popup';panel.innerHTML=content[kind];
+ panel.role=['permission','model'].includes(kind)?'menu':'dialog';
+ if(kind==='plus'){panel.removeAttribute('role');panel.dataset.triggerMenu='';document.querySelector('[data-composer-overlay]').append(panel);return}
+ if(kind==='model'){panel.className='model_menu material_surface';panel.style.setProperty('--dsh-model-anchor','--dsh-model-fixture')}
+ else{panel.style.positionAnchor=anchor.style.anchorName;panel.className=kind==='context'?'ctx_panel':kind==='permission'?'menu_list menu_portal menu_scrollable material_surface':'panel'}
+ if(kind==='permission'){panel.dataset.anchorSide='top';panel.dataset.anchorAlign='start'}
+ if(kind==='permission'||kind==='model'){
+  panel.dataset.menuMaterial='translucent';panel.style.setProperty('--dsh-menu-anchor','--dsh-menu-popup');panel.insertAdjacentHTML('afterbegin','<div class="material_material"></div>');
+ }
+ document.body.append(panel);
+ if(kind==='permission'||kind==='model'){
+  const backing=document.createElement('div');backing.className='material_backing';backing.dataset.menuBacking='';backing.style.setProperty('--dsh-menu-anchor','--dsh-menu-popup');document.body.append(backing);
+ }
+};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('[data-kind],#popup,#stream'))close()});
+window.measure=()=>{
+ const kind=active?.dataset.kind,target=kind==='plus'?document.querySelector('[data-composer-overlay]'):kind==='model'?active.querySelector('button'):active;
+ const a=target?.getBoundingClientRect(),p=document.querySelector('#popup')?.getBoundingClientRect();
+ return {kind,anchorTop:a?.top,panelBottom:p?.bottom,panelTop:p?.top,gap:p&&a?a.top-p.bottom:null,scroll:scroll.scrollTop};
+};
+window.samples=[];let timer;
+document.querySelector('#stream').onclick=()=>{
+ clearInterval(timer);let count=0;window.samples=[];
+ timer=setInterval(()=>{
+  const p=document.createElement('p');p.textContent='新增输出 '+count+' · 正在生成正文与工具调用';flow.append(p);scroll.scrollTop=scroll.scrollHeight;
+  requestAnimationFrame(()=>{window.samples.push(window.measure());document.querySelector('#status').textContent='间距 '+window.measure().gap+'px'});
+  if(++count===30)clearInterval(timer);
+ },100);
+};
+</script>

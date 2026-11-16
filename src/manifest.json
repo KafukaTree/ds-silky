@@ -23,6 +23,7 @@
     "src/resize.js",
     "src/has-freeze.js",
     "src/scroll-cull.js",
+    "src/stat-popover.js",
     "src/stream-fade.js"
   ]
 }

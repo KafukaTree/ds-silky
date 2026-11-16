@@ -1,0 +1,58 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Send echo handoff regression</title>
+<style>
+body {margin:24px;font:16px/1.6 system-ui;background:#fafbfc;color:#18202b}
+#scroll {height:520px;width:680px;overflow:auto;overflow-anchor:none;border:1px solid #ccd1d7}
+#column {display:flex;flex-direction:column}
+#history {height:1000px;flex:none;background:repeating-linear-gradient(#fff 0 39px,#e6e9ed 39px 40px)}
+#composer {position:sticky;bottom:0;height:100px;background:#f1f4f7;overflow-anchor:none}
+.bubble {height:var(--bubble-height,160px);background:#dde6ed}
+[data-slot="conversation.chat.node"] {display:contents}
+[hidden] {display:none}
+pre {white-space:pre-wrap}
+</style>
+<h1>发送气泡交接</h1>
+<button id="replay">重放发送</button>
+<div id="scroll" data-conversation-scroll><main data-conversation-region="chat"><div id="column"><div id="history">历史内容</div><div id="durable" data-chat-flow-key="new-input"><div data-slot="conversation.chat.node" id="node"></div></div><div id="tail"></div></div></main><div id="composer" data-composer-seat>输入区</div></div>
+<!-- Keep the optimization active, as while an output/menu is live or during
+     its 1200ms settle window. No backend, credentials, or message text is used. -->
+<div role="menu" hidden></div>
+<pre id="report">点击重放发送，检查气泡交接时是否反向滚动。</pre>
+<script>window.__disposers=[];window.__ModuleLoader__={load(module){module.factory(()=>{throw Error('No host bridge in fixture')}).apply({effect(callback){__disposers.push(callback())}})}};</script>
+<script src="../../lib/client.js"></script>
+<script>
+window.runHandoff = async ({behavior='smooth',height=160,reading=false,slot=true}={}) => {
+  const frame=()=>new Promise(requestAnimationFrame);
+  const scroller=document.querySelector('#scroll'), durable=document.querySelector('#durable'), tail=document.querySelector('#tail');
+  durable.innerHTML=slot?'<div data-slot="conversation.chat.node"></div>':'';
+  const node=slot?durable.firstElementChild:durable;
+  tail.replaceChildren();scroller.style.setProperty('--bubble-height',height+'px');
+  scroller.scrollTo({top:reading?200:scroller.scrollHeight,behavior:'instant'});
+  await frame();await frame();
+  const emptyHeight=durable.offsetHeight;
+  tail.innerHTML='<div class="bubble" data-submission-echo>有数据支持吗？来源呢</div>';
+  if(!reading)scroller.scrollTo({top:scroller.scrollHeight,behavior});
+  const started=performance.now(),samples=[];let handoff=null;
+  await new Promise(resolve=>{
+    function tick(now){
+      if(!handoff && now-started>=150){
+        const before=scroller.scrollTop,floorBefore=scroller.scrollHeight-scroller.clientHeight;
+        node.innerHTML='<div class="bubble">有数据支持吗？来源呢</div>';
+        tail.replaceChildren();
+        // A synchronous geometry read models the host layout effect, before
+        // MutationObserver/RAF can update the plugin's empty-seat marker.
+        const rowHeight=durable.offsetHeight;
+        handoff={before,after:scroller.scrollTop,floorBefore,floorAfter:scroller.scrollHeight-scroller.clientHeight,rowHeight,staleEmpty:durable.hasAttribute('data-daf-empty')};
+      }
+      samples.push({ms:Math.round(now-started),top:scroller.scrollTop,floor:scroller.scrollHeight-scroller.clientHeight});
+      if(now-started<650)requestAnimationFrame(tick);else resolve();
+    }
+    requestAnimationFrame(tick);
+  });
+  window.handoffResult={emptyHeight,handoff,samples,reversals:samples.filter((s,i)=>i && s.top<samples[i-1].top-1)};
+  document.querySelector('#report').textContent=JSON.stringify(window.handoffResult,null,2);
+  return window.handoffResult;
+};
+document.querySelector('#replay').onclick=()=>runHandoff();
+</script>

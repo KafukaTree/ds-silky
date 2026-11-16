@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DS Silky · 流式尾部空白回放</title>
+<!--
+  Manual browser replay for: the host lays out a whole burst immediately while
+  ::highlight() reveal is still walking the tail, leaving blank space below the
+  last painted glyph.
+
+  This page loads the real ../../lib/client.js. Host DOM, burst cadence, and
+  scroll-to-bottom are synthetic and deliberately exaggerated; results are not
+  evidence from a real DSH model session.
+
+  Metrics compare the geometry of text painted at highlight level >= 1 with
+  the geometry of every laid-out text node in the same container. Level 0 is
+  the plugin's invisible queued state and is excluded from "painted".
+-->
+<style>
+:root{
+  color-scheme:light;
+  --ink:#20252c; --muted:#6b717b; --faint:#8a9099; --line:#e3e6ea;
+  --surface:#fff; --canvas:#f4f6f8; --accent:#2f6f68; --accent-soft:#e7f0ee;
+  --dsw-font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--canvas);color:var(--ink);font:14px/1.5 var(--dsw-font-family);-webkit-font-smoothing:antialiased}
+#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ---------- diagnostic toolbar (outside the transcript) ---------- */
+#toolbar{flex:none;background:rgba(255,255,255,.94);border-bottom:1px solid var(--line);z-index:20}
+.toolbar-inner{max-width:980px;margin:0 auto;padding:10px 18px 9px}
+.toolbar-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:8px;min-width:0}
+.brand strong{font-size:14px;font-weight:600;letter-spacing:.01em}
+.brand small{color:var(--faint);font-size:11px;white-space:nowrap}
+.controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}
+.controls label{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);white-space:nowrap}
+select{font:inherit;font-size:12px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px 24px 4px 8px;cursor:pointer}
+button{font:inherit;font-size:12px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 12px;cursor:pointer}
+button:hover{background:#f7f8fa}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.primary:hover{background:#28615b}
+button:disabled{opacity:.45;cursor:default}
+.check input{accent-color:var(--accent)}
+#note{margin-top:7px;font-size:12px;color:var(--faint);min-height:18px}
+#readout{margin-top:6px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 18px;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--muted)}
+#readout b{color:var(--ink);font-weight:600}
+#readout .row{display:flex;justify-content:space-between;gap:8px;min-width:0}
+#readout .row span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#readout .wide{grid-column:1/-1;border-top:1px dashed var(--line);padding-top:4px;margin-top:1px;display:flex;gap:16px;flex-wrap:wrap;justify-content:flex-start}
+#readout .wide span{white-space:nowrap}
+#readout .peak{color:#8a4b2f}
+
+/* ---------- host-like narrow chat + sticky composer ---------- */
+#scroll{flex:1;min-height:0;overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior:contain}
+#column{width:420px;max-width:100%;min-height:100%;margin:0 auto;display:flex;flex-direction:column}
+#chat{flex:1 0 auto;padding:20px 16px 18px;min-height:0}
+#chat [data-chat-flow-kind="assistant-step"]>div+div{margin-top:16px}
+#chat p{margin:0 0 12px;font-size:15.5px;line-height:27px;letter-spacing:.01em;color:#2a3038}
+#chat p:last-child{margin-bottom:0}
+
+[data-variant="think"]{color:#7c6d66}
+[data-variant="think"] [data-disclosure-header]{display:flex;align-items:center;gap:7px;margin:0 0 7px;font-size:12px;font-weight:500;letter-spacing:.02em;color:#8b7f79}
+[data-variant="think"] [data-disclosure-header]::before{content:"";width:5px;height:5px;border-radius:50%;background:#b3a49d;flex:none}
+#reasoningBody p{font-size:14.5px;line-height:25px;color:#7c6d66}
+
+#composer{position:sticky;bottom:0;z-index:10;flex:none;margin-top:auto;padding:10px 16px 14px;background:linear-gradient(to top,var(--canvas) 82%,rgba(244,246,248,0))}
+.composer-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 5px 18px rgba(30,36,44,.07),0 1px 2px rgba(30,36,44,.05);padding:11px 12px 9px}
+.composer-card .hint{font-size:13px;color:#a0a6af;line-height:20px;min-height:20px}
+.composer-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;color:var(--faint);font-size:11px}
+.composer-foot .pill{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border:1px solid var(--line);border-radius:999px;background:#fafbfc}
+.composer-foot .send{width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-size:13px}
+
+@media (max-width:720px){
+  .toolbar-inner{padding:9px 12px 8px}
+  .controls{margin-left:0}
+  #readout{grid-template-columns:1fr 1fr}
+  #chat{padding:16px 14px 14px}
+  #composer{padding:8px 14px 12px}
+}
+@media (max-width:440px){
+  #column{width:100%}
+}
+</style>
+
+<div id="app">
+  <header id="toolbar">
+    <div class="toolbar-inner">
+      <div class="toolbar-top">
+        <div class="brand">
+          <strong>流式尾部空白回放</strong>
+          <small>last painted glyph vs full laid-out text · real lib/client.js</small>
+        </div>
+        <div class="controls">
+          <label>节奏
+            <select id="profile" aria-label="突发节奏">
+              <option value="small">小 · 1–2 段</option>
+              <option value="medium">中 · 2–4 段</option>
+              <option value="large" selected>大 · 4–7 段</option>
+              <option value="huge">超大 · 8–12 段</option>
+            </select>
+          </label>
+          <label>来源
+            <select id="mode" aria-label="流式来源">
+              <option value="handoff" selected>思考 → 正文</option>
+              <option value="reasoning">仅思考</option>
+              <option value="body">仅正文</option>
+              <option value="parallel">思考 + 正文</option>
+            </select>
+          </label>
+          <label class="check"><input type="checkbox" id="autoscroll" checked> 宿主滚到底</label>
+          <button id="start" class="primary" type="button">开始</button>
+          <button id="stop" type="button">停止</button>
+          <button id="reset" type="button">重置</button>
+        </div>
+      </div>
+      <div id="note" role="status">准备就绪。点击“开始”注入突发段落，宿主会在同一提交内滚到布局底部。</div>
+      <div id="readout" aria-label="实时测量">
+        <div class="row"><span>正文 gap</span><span id="m-body">—</span></div>
+        <div class="row"><span>思考 gap</span><span id="m-think">—</span></div>
+        <div class="row"><span>合并 gap</span><span id="m-all">—</span></div>
+        <div class="row"><span>正文 painted</span><span id="m-body-chars">—</span></div>
+        <div class="row"><span>思考 painted</span><span id="m-think-chars">—</span></div>
+        <div class="row"><span>pending 行</span><span id="m-lines">—</span></div>
+        <div class="row"><span>pending 高度</span><span id="m-pending">—</span></div>
+        <div class="row"><span>插件 buffer</span><span id="m-buffer">—</span></div>
+        <div class="row"><span>active / rules</span><span id="m-active">—</span></div>
+        <div class="row"><span>滚动</span><span id="m-scroll">—</span></div>
+        <div class="wide">
+          <span>峰值合并 gap <b class="peak" id="m-peak">—</b></span>
+          <span>峰值正文 <b class="peak" id="m-peak-body">—</b></span>
+          <span>峰值思考 <b class="peak" id="m-peak-think">—</b></span>
+          <span>峰值 pending <b class="peak" id="m-peak-pending">—</b></span>
+          <span>帧 <b id="m-frames">0</b></span>
+          <span>视口 <b id="m-viewport">—</b></span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="scroll" data-conversation-scroll>
+    <div id="column">
+      <main data-conversation-region="chat" id="chat" data-content-phase="active"></main>
+      <div id="composer">
+        <div class="composer-card">
+          <div class="hint">输入消息…</div>
+          <div class="composer-foot">
+            <span>DS Silky 流式回放 · 合成输入</span>
+            <span class="pill">sticky composer</span>
+            <span class="send" aria-hidden="true">↑</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.__disposers = [];
+window.__ModuleLoader__ = {
+  load(module) {
+    window.__plugin = module.factory(() => { throw Error('Stream-tail fixture has no host bridge') });
+    window.__plugin.apply({ effect(callback) { __disposers.push(callback()) } });
+  },
+};
+
+/* ------------------------------------------------------------------ *
+ * Fixture host: a narrow transcript, sticky composer, burst append and
+ * scroll-to-layout-bottom. No model, network or credentials involved.
+ * ------------------------------------------------------------------ */
+(function () {
+  'use strict';
+
+  const SF_LEVELS = 16;
+  const scroll = document.getElementById('scroll');
+  const chat = document.getElementById('chat');
+  const note = document.getElementById('note');
+  const profileSelect = document.getElementById('profile');
+  const modeSelect = document.getElementById('mode');
+  const autoscroll = document.getElementById('autoscroll');
+  const startButton = document.getElementById('start');
+  const stopButton = document.getElementById('stop');
+  const resetButton = document.getElementById('reset');
+
+  const PROFILES = {
+    small:  { base: 1, jitter: 2, interval: 380, ticks: 13 },
+    medium: { base: 2, jitter: 3, interval: 330, ticks: 12 },
+    large:  { base: 4, jitter: 4, interval: 300, ticks: 10 },
+    huge:   { base: 8, jitter: 5, interval: 280, ticks: 8 },
+  };
+  const MODES = ['handoff', 'reasoning', 'body', 'parallel'];
+
+  // Paragraph lengths vary on purpose so the blank tail is not one fixed row.
+  const PASSAGES = [
+    '先核对一下输入里到底有几个需要区分的层级，再把每一层对应的说明写清楚，避免把相邻的概念混在一起。',
+    '这版的处理顺序是：先保留已经显示出来的稳定前缀，再把新到达的整段排版放进 DOM，最后让高亮按行逐步追上来。',
+    '如果一次提交塞进来的段落太多，布局会立刻把整段高度算完，而可见文字还停在更靠上的位置，视觉上就会留下空白。',
+    '短句也要测试。',
+    '在 420px 的窄栏里，同样的字数会折成更多行，所以突发批次造成的空白高度会比宽屏更明显，滚动位置也更容易跳动。',
+    '推理和正文共用同一个阅读顺序。前一个来源还没有收尾时，后一个来源不应该提前越过它开始淡入，否则读者会看到两处同时发亮。',
+    '这里再补一段中等长度的说明，用来观察连续多个块之间的间距是否被计入了空白高度，以及最后一行和容器底边之间是否还有额外留白。',
+    '当上游以突发方式到达时，适配器会连续排空积压字符；即使这样，一次提交的排版高度仍然可以先于最后一帧高亮出现。',
+    '还有一个边界需要检查：最后一行如果只显示了一部分字符，那么这一行的行盒应该算作已绘制，而不是整行都算隐藏。',
+    '把停顿也放进来。',
+    '视觉上最刺眼的情况通常不是稳态，而是突发后的第一帧：整段文字已经占据版面，只有前几行有墨色，下面是一大块结构已经存在但看不见的区域。',
+    '为方便对照，页面会把“最后绘制的字符位置”和“最后排版的字符位置”都换算成像素，并分别记录正文、思考和两者合并后的差值。',
+    '这里故意放入一句比较长的内容，让它在窄栏里折成四到五行，从而给峰值测量提供更稳定的样本，而不是只依赖一两个短段落。',
+    '如果滚动容器已经贴底，新增的行会把视图继续往下推；如果宿主没有贴底，空白可能落在视口之外，因此回放默认每帧都滚到布局底部。',
+    '收尾时不应该再有新的排版增长，剩余的高亮应该在很短的时间内走完，最终 gap 回到零，页面才会报告“已收尾”。',
+    '这一句用来延长批次。'.repeat(4),
+  ];
+
+  let runSerial = 0;
+  let turn = 0;
+  let running = false;
+  let settling = false;
+  let stoppedAt = 0;
+  let sampler = 0;
+  let lastRender = 0;
+  let runStartedAt = 0;
+  let clientSource = '../../lib/client.js';
+  let summary = freshSummary();
+
+  function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+  function raf() { return new Promise(resolve => requestAnimationFrame(resolve)); }
+
+  function setRunControls(active) {
+    startButton.disabled = active;
+    stopButton.disabled = !active;
+  }
+
+  function freshSummary() {
+    return {
+      frames: 0,
+      startedAt: null,
+      finishedAt: null,
+      maxBody: null,
+      maxReasoning: null,
+      maxCombined: null,
+      maxPending: null,
+      maxBuffer: 0,
+      recent: [],
+    };
+  }
+
+  function config() {
+    const profile = PROFILES[profileSelect.value] || PROFILES.large;
+    return {
+      profile: profileSelect.value,
+      mode: MODES.includes(modeSelect.value) ? modeSelect.value : 'handoff',
+      autoscroll: autoscroll.checked,
+      interval: profile.interval,
+      ticks: profile.ticks,
+      base: profile.base,
+      jitter: profile.jitter,
+    };
+  }
+
+  function burstSize(cfg, tick) {
+    // Deterministic uneven bursts make the blank height vary rather than ramp
+    // at one constant rate.
+    return cfg.base + ((tick * 3 + 1) % cfg.jitter);
+  }
+
+  function paragraphAt(index) {
+    return PASSAGES[index % PASSAGES.length];
+  }
+
+  function seatMarkup(mode) {
+    const think = mode === 'body' ? '' :
+      '<div data-variant="think" data-state="running" data-expanded="true" id="reasoning">' +
+        '<div data-disclosure-header><span>思考</span></div>' +
+        '<div id="reasoningBody"></div>' +
+      '</div>';
+    const body = mode === 'reasoning' ? '' :
+      '<div data-streaming="true" id="body"></div>';
+    return '<section data-chat-flow-key="turn-' + (++turn) + '" data-chat-flow-kind="assistant-step">' +
+      think + body + '</section>';
+  }
+
+  function scrollToBottom() {
+    scroll.scrollTop = scroll.scrollHeight;
+  }
+
+  function hostAtBottom() {
+    return scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight <= 1;
+  }
+
+  /* ---------------- measurement: painted vs laid out ---------------- */
+
+  function levelMap(node) {
+    const levels = new Array(node.data.length);
+    for (const [name, highlight] of CSS.highlights) {
+      if (!name.startsWith('daf-fade-')) continue;
+      const level = Number(name.slice('daf-fade-'.length));
+      if (!Number.isFinite(level)) continue;
+      for (const range of highlight) {
+        if (range.startContainer !== node || range.collapsed) continue;
+        const start = Math.max(0, Math.min(node.length, range.startOffset));
+        const end = Math.max(start, Math.min(node.length, range.endOffset));
+        for (let index = start; index < end; index += 1) levels[index] = level;
+      }
+    }
+    return levels;
+  }
+
+  function textRectList(node, start, end) {
+    const range = document.createRange();
+    range.setStart(node, start);
+    range.setEnd(node, end);
+    return [...range.getClientRects()].filter(rect => rect.height > 0);
+  }
+
+  function lineBottom(node, index) {
+    const rects = textRectList(node, index, Math.min(node.length, index + 1));
+    if (rects.length === 0) return null;
+    return Math.max(...rects.map(rect => rect.bottom));
+  }
+
+  function emptyMetrics(label) {
+    return {
+      label, present: false, totalChars: 0, paintedChars: 0, hiddenChars: 0, unmaskedChars: 0,
+      lastPaintedOffset: null, lastBrightOffset: null,
+      paintedBottom: null, brightBottom: null, fullBottom: null,
+      gap: 0, brightGap: 0, noPaintedText: false,
+      hiddenLines: 0, hiddenLineHeight: 0, lineCount: 0,
+      pendingLines: 0, pendingLineHeight: 0, pendingVisualHeight: 0, pendingOver2Lines: false,
+      top: null, layoutBottom: null,
+    };
+  }
+
+  function measureContainers(containers, label) {
+    const present = containers.filter(container => container && container.isConnected);
+    if (present.length === 0) return emptyMetrics(label);
+
+    let total = 0;
+    let paintedChars = 0;
+    let hiddenChars = 0;
+    let unmaskedChars = 0;
+    let lastPaintedOffset = -1;
+    let lastBrightOffset = -1;
+    let paintedBottom = null;
+    let brightBottom = null;
+    let fullBottom = null;
+    let top = Infinity;
+    let pendingLines = 0;
+    let pendingLineHeight = 0;
+    let pendingTop = null;
+    let lastPaintedNode = null;
+    let lastPaintedIndex = -1;
+    let lastBrightNode = null;
+    let lastBrightIndex = -1;
+    const lineRects = [];
+    const walker = document.createTreeWalker(present[0], NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    let node;
+    while ((node = walker.nextNode()) !== null) nodes.push(node);
+    for (const extra of present.slice(1)) {
+      const extraWalker = document.createTreeWalker(extra, NodeFilter.SHOW_TEXT);
+      while ((node = extraWalker.nextNode()) !== null) nodes.push(node);
+    }
+
+    for (const textNode of nodes) {
+      if (textNode.data.length === 0) continue;
+      const levels = levelMap(textNode);
+      const rects = textRectList(textNode, 0, textNode.data.length);
+      for (const rect of rects) {
+        lineRects.push(rect);
+        if (rect.top < top) top = rect.top;
+        if (fullBottom === null || rect.bottom > fullBottom) fullBottom = rect.bottom;
+      }
+      let firstHidden = -1;
+      for (let index = 0; index < textNode.data.length; index += 1) {
+        const level = levels[index];
+        const painted = level !== 0; // undefined = unmasked/visible; 0 = queued invisible
+        if (!painted) {
+          hiddenChars += 1;
+          if (firstHidden === -1) firstHidden = index;
+          continue;
+        }
+        paintedChars += 1;
+        if (level === undefined) unmaskedChars += 1;
+        lastPaintedOffset = total + index;
+        lastPaintedNode = textNode;
+        lastPaintedIndex = index;
+        if (level === undefined || level >= SF_LEVELS - 1) {
+          lastBrightOffset = total + index;
+          lastBrightNode = textNode;
+          lastBrightIndex = index;
+        }
+      }
+      if (firstHidden !== -1) {
+        // Queued invisible text is a suffix of the source. Its visual extent
+        // starts at the line containing the first queued glyph; the number of
+        // line boxes is the signal the coordinator wants ("more than 2 lines").
+        const pendingRects = textRectList(textNode, firstHidden, textNode.data.length);
+        for (const rect of pendingRects) {
+          pendingLines += 1;
+          pendingLineHeight += rect.height;
+          if (pendingTop === null || rect.top < pendingTop) pendingTop = rect.top;
+        }
+      }
+      total += textNode.data.length;
+    }
+
+    // The last painted glyph in reading order defines the visual frontier.
+    // One layout read is enough; doing it per character made long settled
+    // transcripts needlessly expensive.
+    if (lastPaintedNode !== null) paintedBottom = lineBottom(lastPaintedNode, lastPaintedIndex);
+    if (lastBrightNode !== null) brightBottom = lineBottom(lastBrightNode, lastBrightIndex);
+
+    const lineBase = lineRects.length > 0 ? Math.min(...lineRects.map(rect => rect.top)) : null;
+    const hiddenRects = paintedBottom === null
+      ? lineRects.slice()
+      : lineRects.filter(rect => rect.top >= paintedBottom - 1);
+    const noPaintedText = paintedBottom === null && total > 0;
+    const gap = fullBottom === null ? 0
+      : paintedBottom !== null ? Math.max(0, fullBottom - paintedBottom)
+      : lineBase !== null ? Math.max(0, fullBottom - lineBase) : 0;
+    const brightGap = fullBottom === null || brightBottom === null ? 0 : Math.max(0, fullBottom - brightBottom);
+
+    return {
+      label,
+      present: true,
+      totalChars: total,
+      paintedChars,
+      hiddenChars,
+      unmaskedChars,
+      lastPaintedOffset: lastPaintedOffset >= 0 ? lastPaintedOffset : null,
+      lastBrightOffset: lastBrightOffset >= 0 ? lastBrightOffset : null,
+      paintedBottom,
+      brightBottom,
+      fullBottom,
+      gap,
+      brightGap,
+      noPaintedText,
+      hiddenLines: hiddenRects.length,
+      hiddenLineHeight: hiddenRects.reduce((sum, rect) => sum + rect.height, 0),
+      lineCount: lineRects.length,
+      pendingLines,
+      pendingLineHeight,
+      pendingVisualHeight: fullBottom !== null && pendingTop !== null ? Math.max(0, fullBottom - pendingTop) : 0,
+      pendingOver2Lines: pendingLines > 2,
+      top: lineBase,
+      layoutBottom: present[present.length - 1].getBoundingClientRect().bottom,
+    };
+  }
+
+  function highlightStatus() {
+    const counts = {};
+    let ranges = 0;
+    for (const [name, highlight] of CSS.highlights) {
+      if (!name.startsWith('daf-fade-')) continue;
+      counts[name] = highlight.size;
+      ranges += highlight.size;
+    }
+    const plugin = window.__dshAnthropicFonts && window.__dshAnthropicFonts.streamFadeStatus
+      ? window.__dshAnthropicFonts.streamFadeStatus()
+      : null;
+    return {
+      plugin,
+      ranges,
+      fadeRanges: counts,
+      fade0: counts['daf-fade-0'] || 0,
+      fade15: counts['daf-fade-15'] || 0,
+    };
+  }
+
+  function measure() {
+    const reasoningRoot = document.getElementById('reasoningBody');
+    const bodyRoot = document.getElementById('body');
+    const reasoning = measureContainers([reasoningRoot], 'reasoning');
+    const body = measureContainers([bodyRoot], 'body');
+    const ordered = [];
+    const seat = chat.querySelector('[data-chat-flow-key]');
+    if (seat) {
+      // Document order: reasoning precedes body. Use the same helper so the
+      // combined gap spans from the last visible glyph in the seat to the end
+      // of the last laid-out line.
+      const all = seat.querySelectorAll('#reasoningBody, #body');
+      for (const container of all) ordered.push(container);
+    }
+    const combined = measureContainers(ordered, 'combined');
+    const status = highlightStatus();
+    return {
+      atMs: runStartedAt === 0 ? 0 : Math.round(performance.now() - runStartedAt),
+      running,
+      settling,
+      body,
+      reasoning,
+      combined,
+      status,
+      scroll: {
+        top: scroll.scrollTop,
+        height: scroll.scrollHeight,
+        client: scroll.clientHeight,
+        atBottom: hostAtBottom(),
+        bottomBlank: Math.max(0, scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight),
+      },
+      viewport: { width: innerWidth, height: innerHeight },
+    };
+  }
+
+  /* ---------------- sampling / readout ---------------- */
+
+  function pick(metrics) {
+    return {
+      gap: Math.round(metrics.gap * 10) / 10,
+      brightGap: Math.round(metrics.brightGap * 10) / 10,
+      paintedChars: metrics.paintedChars,
+      hiddenChars: metrics.hiddenChars,
+      totalChars: metrics.totalChars,
+      hiddenLines: metrics.hiddenLines,
+      hiddenLineHeight: Math.round(metrics.hiddenLineHeight * 10) / 10,
+      pendingLines: metrics.pendingLines,
+      pendingLineHeight: Math.round(metrics.pendingLineHeight * 10) / 10,
+      pendingVisualHeight: Math.round(metrics.pendingVisualHeight * 10) / 10,
+      pendingOver2Lines: metrics.pendingOver2Lines,
+      lineCount: metrics.lineCount,
+      lastPaintedOffset: metrics.lastPaintedOffset,
+      paintedBottom: metrics.paintedBottom,
+      fullBottom: metrics.fullBottom,
+    };
+  }
+
+  function record(m) {
+    summary.frames += 1;
+    if (summary.startedAt === null) summary.startedAt = Date.now();
+    if (m.status.plugin) summary.maxBuffer = Math.max(summary.maxBuffer, m.status.plugin.buffer || 0);
+    for (const [key, maxKey] of [['body', 'maxBody'], ['reasoning', 'maxReasoning'], ['combined', 'maxCombined']]) {
+      const current = m[key];
+      const best = summary[maxKey];
+      if (!current.present) continue;
+      if (best === null || current.gap > best.gap) {
+        summary[maxKey] = { ...pick(current), atMs: m.atMs, status: m.status.plugin, scroll: m.scroll };
+      }
+    }
+    if (m.combined.present) {
+      const pending = pick(m.combined);
+      if (summary.maxPending === null ||
+          pending.pendingVisualHeight > summary.maxPending.pendingVisualHeight ||
+          (pending.pendingVisualHeight === summary.maxPending.pendingVisualHeight &&
+            pending.pendingLines > summary.maxPending.pendingLines)) {
+        summary.maxPending = { ...pending, atMs: m.atMs };
+      }
+    }
+    if (summary.frames % 6 === 0) {
+      summary.recent.push({ atMs: m.atMs, body: pick(m.body), reasoning: pick(m.reasoning), combined: pick(m.combined) });
+      if (summary.recent.length > 120) summary.recent.shift();
+    }
+  }
+
+  function shortGap(metrics) {
+    if (!metrics.present) return '—';
+    return metrics.gap.toFixed(0) + 'px · pending ' + metrics.pendingLines + ' 行 · ' +
+      metrics.hiddenChars + '/' + metrics.totalChars + ' 隐藏';
+  }
+
+  function render(m) {
+    const plugin = m.status.plugin;
+    document.getElementById('m-body').textContent = shortGap(m.body);
+    document.getElementById('m-think').textContent = shortGap(m.reasoning);
+    document.getElementById('m-all').textContent = shortGap(m.combined);
+    document.getElementById('m-body-chars').textContent = m.body.present
+      ? (m.body.lastPaintedOffset === null ? '无' : (m.body.lastPaintedOffset + 1) + ' / ' + m.body.totalChars)
+      : '—';
+    document.getElementById('m-think-chars').textContent = m.reasoning.present
+      ? (m.reasoning.lastPaintedOffset === null ? '无' : (m.reasoning.lastPaintedOffset + 1) + ' / ' + m.reasoning.totalChars)
+      : '—';
+    document.getElementById('m-lines').textContent = m.combined.present
+      ? m.combined.pendingLines + ' 行 / ' + m.combined.pendingLineHeight.toFixed(0) + 'px文字'
+      : '—';
+    document.getElementById('m-pending').textContent = m.combined.present
+      ? m.combined.pendingVisualHeight.toFixed(0) + 'px' + (m.combined.pendingOver2Lines ? ' · >2 行' : '')
+      : '—';
+    document.getElementById('m-buffer').textContent = plugin ? String(plugin.buffer) : '插件未就绪';
+    document.getElementById('m-active').textContent = plugin ? plugin.active + ' / ' + plugin.rules : '—';
+    document.getElementById('m-scroll').textContent = (m.scroll.atBottom ? '贴底' : '离底 ' + m.scroll.bottomBlank + 'px') +
+      ' · ' + Math.round(m.scroll.top) + '/' + m.scroll.height;
+    document.getElementById('m-peak').textContent = summary.maxCombined ? summary.maxCombined.gap.toFixed(0) + 'px' : '—';
+    document.getElementById('m-peak-body').textContent = summary.maxBody ? summary.maxBody.gap.toFixed(0) + 'px' : '—';
+    document.getElementById('m-peak-think').textContent = summary.maxReasoning ? summary.maxReasoning.gap.toFixed(0) + 'px' : '—';
+    document.getElementById('m-peak-pending').textContent = summary.maxPending
+      ? summary.maxPending.pendingVisualHeight.toFixed(0) + 'px · ' + summary.maxPending.pendingLines + ' 行'
+      : '—';
+    document.getElementById('m-frames').textContent = String(summary.frames);
+    document.getElementById('m-viewport').textContent = m.viewport.width + '×' + m.viewport.height;
+    return m;
+  }
+
+  function sample(serial) {
+    sampler = 0;
+    if (serial !== runSerial) return;
+    if (running && config().autoscroll) scrollToBottom();
+    const measured = measure();
+    record(measured);
+    const now = performance.now();
+    if (now - lastRender > 80) {
+      lastRender = now;
+      render(measured);
+    }
+    if (!running) {
+      const plugin = measured.status.plugin;
+      const idle = !plugin || (plugin.buffer === 0 && plugin.active === 0 && measured.status.fade0 === 0);
+      if (idle || now - stoppedAt > 2600) {
+        settling = false;
+        summary.finishedAt = Date.now();
+        setRunControls(false);
+        const final = render(measure());
+        note.textContent = '已收尾：最后一次绘制与最后一次排版之间 ' + final.combined.gap.toFixed(0) + 'px；' +
+          '全程峰值 ' + (summary.maxCombined ? summary.maxCombined.gap.toFixed(0) : '0') + 'px。';
+        return;
+      }
+    }
+    sampler = requestAnimationFrame(() => sample(serial));
+  }
+
+  function startSampling(serial) {
+    if (sampler !== 0) cancelAnimationFrame(sampler);
+    sampler = 0;
+    lastRender = 0;
+    sampler = requestAnimationFrame(() => sample(serial));
+  }
+
+  /* ---------------- host bursts ---------------- */
+
+  function appendBurst(source, count, seed) {
+    const container = source === 'reasoning'
+      ? document.getElementById('reasoningBody')
+      : document.getElementById('body');
+    if (!container) return 0;
+    for (let index = 0; index < count; index += 1) {
+      const paragraph = document.createElement('p');
+      paragraph.textContent = paragraphAt(seed * 17 + index * 5);
+      container.append(paragraph);
+    }
+    return count;
+  }
+
+  function finishReasoning() {
+    const reasoning = document.getElementById('reasoning');
+    if (reasoning) reasoning.setAttribute('data-state', 'ok');
+  }
+
+  function completeStreams() {
+    finishReasoning();
+    const body = document.getElementById('body');
+    if (body) body.removeAttribute('data-streaming');
+    const reasoningSummary = document.querySelector('#reasoning [data-streaming="true"]');
+    if (reasoningSummary) reasoningSummary.removeAttribute('data-streaming');
+  }
+
+  function targetFor(cfg, tick) {
+    if (cfg.mode === 'reasoning') return ['reasoning'];
+    if (cfg.mode === 'body') return ['body'];
+    if (cfg.mode === 'parallel') return ['reasoning', 'body'];
+    const reasoningTicks = Math.max(1, Math.min(3, cfg.ticks - 1));
+    return tick < reasoningTicks ? ['reasoning'] : ['body'];
+  }
+
+  async function drive(serial) {
+    const cfg = config();
+    const reasoningTicks = Math.max(1, Math.min(3, cfg.ticks - 1));
+    let paragraphs = 0;
+    note.textContent = '流式回放中：' + cfg.profile + ' / ' + cfg.mode +
+      '，每批 ' + cfg.base + '–' + (cfg.base + cfg.jitter - 1) + ' 段，宿主每帧滚到布局底部。';
+    for (let tick = 0; tick < cfg.ticks; tick += 1) {
+      await sleep(tick === 0 ? 140 : cfg.interval);
+      if (serial !== runSerial) return;
+      if (cfg.mode === 'handoff' && tick === reasoningTicks) finishReasoning();
+      const count = burstSize(cfg, tick);
+      for (const source of targetFor(cfg, tick)) paragraphs += appendBurst(source, count, tick);
+      if (config().autoscroll) scrollToBottom();
+      await raf();
+      if (serial !== runSerial) return;
+    }
+    // Let the final host commit land, then close the stream the way the host
+    // does. The plugin keeps ownership of the tail through its final paint.
+    await sleep(220);
+    if (serial !== runSerial) return;
+    completeStreams();
+    running = false;
+    settling = true;
+    stoppedAt = performance.now();
+    setRunControls(false);
+    note.textContent = '上游已结束：等待剩余高亮走完，观察 gap 是否回到 0。' +
+      '（本次注入 ' + chat.querySelectorAll('p').length + ' 段 / ' + paragraphs + ' 批段）';
+  }
+
+  /* ---------------- public controls ---------------- */
+
+  function stop() {
+    if (!running && !settling) return;
+    runSerial += 1;
+    running = false;
+    settling = false;
+    if (sampler !== 0) cancelAnimationFrame(sampler);
+    sampler = 0;
+    setRunControls(false);
+    note.textContent = '已停止调度；当前画面保留，可点“重置”清空。';
+    render(measure());
+  }
+
+  function reset(options) {
+    runSerial += 1;
+    running = false;
+    settling = false;
+    stoppedAt = 0;
+    if (sampler !== 0) cancelAnimationFrame(sampler);
+    sampler = 0;
+    summary = freshSummary();
+    runStartedAt = 0;
+    chat.innerHTML = seatMarkup(modeSelect.value);
+    setRunControls(false);
+    render(measure());
+    if (!options || !options.silent) note.textContent = '已重置：座位为空，等待新的突发输入。';
+  }
+
+  function start(options) {
+    options = options || {};
+    if (options.profile && PROFILES[options.profile]) profileSelect.value = options.profile;
+    if (options.mode && MODES.includes(options.mode)) modeSelect.value = options.mode;
+    if (typeof options.autoscroll === 'boolean') autoscroll.checked = options.autoscroll;
+
+    runSerial += 1;
+    const serial = runSerial;
+    running = true;
+    settling = false;
+    stoppedAt = 0;
+    if (sampler !== 0) cancelAnimationFrame(sampler);
+    sampler = 0;
+    summary = freshSummary();
+    runStartedAt = performance.now();
+    chat.innerHTML = seatMarkup(modeSelect.value);
+    scrollToBottom();
+    setRunControls(true);
+    note.textContent = '已开始，等待第一批突发段落…';    startSampling(serial);
+    drive(serial).catch(error => {
+      if (serial !== runSerial) return;
+      running = false;
+      settling = false;
+      setRunControls(false);
+      note.textContent = '回放失败：' + (error && error.message ? error.message : String(error));
+      console.error(error);
+    });
+    return { serial, profile: profileSelect.value, mode: modeSelect.value };
+  }
+
+  startButton.addEventListener('click', () => start());
+  stopButton.addEventListener('click', stop);
+  resetButton.addEventListener('click', () => reset());
+  profileSelect.addEventListener('change', () => {
+    if (!running && !settling) note.textContent = '节奏改为“' + profileSelect.value + '”，点击“开始”应用。';
+  });
+  modeSelect.addEventListener('change', () => {
+    if (!running && !settling) note.textContent = '来源改为“' + modeSelect.value + '”，点击“开始”应用。';
+  });
+  autoscroll.addEventListener('change', () => {
+    if (autoscroll.checked) scrollToBottom();
+  });
+
+  window.__streamTail = {
+    start,
+    stop,
+    reset,
+    measure,
+    status: highlightStatus,
+    get running() { return running; },
+    get settling() { return settling; },
+    get client() { return clientSource; },
+    summary() {
+      return {
+        frames: summary.frames,
+        startedAt: summary.startedAt,
+        finishedAt: summary.finishedAt,
+        maxBuffer: summary.maxBuffer,
+        maxBody: summary.maxBody,
+        maxReasoning: summary.maxReasoning,
+        maxCombined: summary.maxCombined,
+        maxPending: summary.maxPending,
+        recent: summary.recent.slice(),
+        last: measure(),
+      };
+    },
+    config,
+  };
+
+  // Initial empty seat. Keep it in sync with the currently selected source.
+  reset({ silent: true });
+  render(measure());
+
+  // Load the real client bundle by default. ?client=<same-origin path> is for
+  // before/after comparisons (for example a preserved baseline bundle). It is
+  // deliberately same-origin only: this page never loads remote scripts.
+  const query = new URLSearchParams(location.search);
+  const requestedClient = query.get('client');
+  if (requestedClient) {
+    try {
+      const resolved = new URL(requestedClient, location.href);
+      if (resolved.origin !== location.origin) throw new Error('client override must be same-origin');
+      clientSource = resolved.href;
+    } catch (error) {
+      note.textContent = '客户端覆盖被拒绝：' + (error && error.message ? error.message : String(error));
+      return;
+    }
+  }
+  document.documentElement.setAttribute('data-stream-tail-client', clientSource);
+
+  function whenPlugin(callback) {
+    const deadline = performance.now() + 5000;
+    const poll = () => {
+      if (window.__dshAnthropicFonts) { callback(); return; }
+      if (performance.now() >= deadline) {
+        note.textContent = '插件未初始化：请确认通过本地服务器打开本页，并检查客户端脚本路径。';
+        return;
+      }
+      setTimeout(poll, 25);
+    };
+    poll();
+  }
+
+  const runtime = document.createElement('script');
+  runtime.src = clientSource + (clientSource.includes('?') ? '&' : '?') + 'v=' + Date.now();
+  runtime.addEventListener('error', () => {
+    note.textContent = '客户端加载失败：' + clientSource;
+  });
+  document.body.append(runtime);
+
+  whenPlugin(() => {
+    if (query.has('play') || query.has('start')) {
+      start({
+        profile: query.get('profile') || undefined,
+        mode: query.get('mode') || undefined,
+        autoscroll: query.has('noautoscroll') ? false : true,
+      });
+    }
+  });
+})();
+</script>
+</html>
